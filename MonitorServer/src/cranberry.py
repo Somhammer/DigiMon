@@ -62,7 +62,7 @@ class Cranberry():
         while True:
             try:
                 command = client_socket.recv(1024)
-                if not data: 
+                if not command: 
                     break
                 self.logger.info(f"Received from {addr[0]}:{addr[1]}: {command.decode()}")
                 reply = self.handle_screen(command.decode())
