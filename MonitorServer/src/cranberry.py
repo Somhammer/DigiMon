@@ -1,9 +1,9 @@
 #===============================================================
 #
-#  Raspberry Pi camera control system for beam profile monitoring
+#  Beam profile monitor screen control system
 #
-#                Original Author: Garam HAHN  <garam.hahn@gmail.com>
-#                         Author: Seohyeon AN <klar.wind0425@gmail.com>
+#         Original Author: Garam HAHN  <garam.hahn@gmail.com>
+#                  Author: Seohyeon AN <klar.wind0425@gmail.com>
 #
 #===============================================================
 import os, sys
