@@ -65,7 +65,8 @@ class Cranberry():
                 if not command: 
                     break
                 self.logger.info(f"Received from {addr[0]}:{addr[1]}: {command.decode()}")
-                reply = self.handle_screen(command.decode())
+                reply = self.simple_test(command)
+                #reply = self.handle_screen(command.decode())
                 client_socket.send(reply)
                 if any(i in command.decode().lower() for i in ['quit','exit','q']):
                     self.close = True
@@ -75,6 +76,9 @@ class Cranberry():
         
         self.logger.info(f"Disconnectd at {addr[0]}:{addr[1]}")
         client_socket.close()
+
+    def simple_test(self, command):
+        return command
 
     def handle_screen(self, command):
         import RPi.GPIO as GPIO
