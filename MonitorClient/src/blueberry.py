@@ -7,8 +7,6 @@ from scipy.optimize import curve_fit
 
 # 카메라가 특별한 툴킷을 제공한다면 그것으로 바꿀 예정임. 지금은 테스트를 위해 opencv를 이용함
 import cv2
-import requests
-import imutils
 
 from PySide6.QtCore import *
 from PySide6.QtGui import *
@@ -36,6 +34,8 @@ class Blueberry(QThread):
 
         self.image = None
         self.last_picture = None
+
+        self.transform_points = []
         
         self.picture_width = None
         self.picture_height = None
@@ -90,7 +90,6 @@ class Blueberry(QThread):
 
     def run(self):
         while self.working:
-
             if self.idx == CAMERA_EXIT:
                 break
             elif self.idx == CAMERA_CAPTURE:
@@ -161,7 +160,7 @@ class Blueberry(QThread):
         self.camera.set(3,self.picture_width)
         self.camera.set(4,self.picture_height)
         retval, self.image = self.camera.read()
-        image = imutils.resize(self.image, width=self.picture_width, height=self.picture_height)
+        image = cv2.resize(self.image, dsize=(self.picture_width, self.picture_height), interpolation=cv2.INTER_LINEAR)
 
         height, width, channel = image.shape
         qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
@@ -190,17 +189,20 @@ class Blueberry(QThread):
         transformed_image = pg.gaussianFilter(transformed_image, (15,15))
         transformed_image += np.random.normal(size=(200,200)) * 0.1
         #data = data.astype(np.uint8)
+        if self.filter_code == BKG_SUBSTRACTION:
+            background = cv2.imread(self.filter_para['background file'])
+            filtered_image = cv2.subtract(transformed_image, background)
         if self.filter_code == GAUSSIAN_FILTER:
-            ksize = self.filter_para['ksize']
+            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
             sigmaX = self.filter_para['sigmaX']
             filtered_image = cv2.GaussianBlur(transformed_image, ksize=ksize, sigmaX=sigmaX)
         elif self.filter_code == MEDIAN_FILTER:
-            ksize = self.filter_para['ksize']
+            ksize = self.filter_para['kernal size']
             filtered_image = cv2.medianBlur(transformed_image, ksize=ksize)
         elif self.filter_code == BILATERAL_FILTER:
-            ksize = self.filter_para['ksize']
-            scolor = self.filter_para['scolor']
-            sspace = self.filter_para['sspace']
+            ksize = self.filter_para['kernal size']
+            scolor = self.filter_para['sigma color']
+            sspace = self.filter_para['sigma space']
             filtered_image = cv2.bilateralFilter(transformed_image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
         else:
             filtered_image = transformed_image

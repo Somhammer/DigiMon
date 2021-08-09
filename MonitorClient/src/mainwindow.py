@@ -39,6 +39,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.original_images = []
         self.filtered_images = []
 
+        self.transform_points= []
+
         self.profile = None
         self.beamx = None
         self.beamy = None
@@ -82,6 +84,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Screen Control
         self.sliderScreenSpace.valueChanged.connect(lambda: self.lineScreenSpace.setText(str(self.sliderScreenSpace.value())))
         # Emittance Measurement
+        self.pushCalibration.clicked.connect(self.calibrate_image)
         self.pushFilter.clicked.connect(self.filter_image)
         #self.pushCalculate.clicked.connect()
 
@@ -122,7 +125,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         calibration = CalibrationWindow()
         r = calibration.return_para()
         if r:
-            pass
+            self.transform_points = calibration.original_points
+            self.blueberry.transform_points = self.transform_points
 
     def filter_image(self):
         filtering = FilterWindow(self, self.original_images[-1])

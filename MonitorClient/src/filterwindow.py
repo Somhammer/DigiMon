@@ -17,9 +17,34 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.parent = parent
         self.setupUi(self)
 
+        """
+            # Example Image...
+        from colour import Color
+        blue, red = Color('blue'), Color('red')
+        colors = blue.range_to(red, 256)
+        colors_array = np.array([np.array(color.get_rgb()) * 255 for color in colors])
+        look_up_table = colors_array.astype(np.uint8)
+        image = cv2.LUT(image, look_up_table)
+        """
+
+        #print(image)
+        #self.image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        #self.code = None
+        #self.parameters = {}
+
+
+        #self.image = cv2.Laplacian(image, cv2.CV_64F)
         self.image = image
-        self.code = None
-        self.parameters = {}
+        #self.image = cv2.convertScaleAbs(self.image)
+        #self.image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        #self.image = cv2.resize(self.image, dsize=(300, 300), interpolation=cv2.INTER_LINEAR)
+        #height, width = self.image.shape
+        #channel = 1
+        #qImg = QImage(image.data, width, height, width*channel, QImage.Format_Grayscale16)
+        #pixmap = QPixmap.fromImage(qImg)
+
+        #self.labelImage.resize(width, height)
+        #self.labelImage.setPixmap(pixmap)
 
         self.set_action()
         self.show()
@@ -27,62 +52,97 @@ class FilterWindow(QDialog, Ui_FilterWindow):
     def set_action(self):
         self.logger_signal.connect(self.parent.receive_log)
 
+        self.pushApply.clicked.connect(self.apply_filter)
+
         self.buttonBox.accepted.connect(self.click_ok)
         self.buttonBox.rejected.connect(self.click_cancel)
 
         self.comboFilter.currentTextChanged.connect(self.load_parameters)
 
     def load_parameters(self):
-        def add_widget(layout, name, push=False):
-            print('1:', layout.rowCount(), layout.columnCount())
-            label = QLabel(name)
-            if not push:
-                widget = QLineEdit('0')
+        class Item(QWidget):
+            def __init__(self):
+                QWidget.__init__(self)
+                self.layout = QBoxLayout(QBoxLayout.LeftToRight)
+
+            def add_lineedit(self, name, makebtn=False):
+                self.label = QLabel(name)
+                self.linevalue = QLineEdit()
+                self.layout.addWidget(self.label)
+                self.layout.addWidget(self.linevalue)
+                if makebtn:
+                    def click_open(line):
+                        fname = QFileDialog.getExistingDirectory(self, "Select Background Image File")
+                        line.setText(fname)
+                    self.pushbtn = QPushButton("Open")
+                    self.pushbtn.clicked.connect(lambda: click_open(self.linevalue))
+                    self.layout.addWidget(self.pushbtn)
+                self.layout.setSizeConstraint(QBoxLayout.SetFixedSize)
+                self.setLayout(self.layout)
+
+        def set_value(name, value):
+            if value == '': return
+            if name == 'background file':
+                value = str(value)
             else:
-                widget = QPushButton('Apply')
-            widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-            row = layout.rowCount()+1
-            print('2:', layout.rowCount(), layout.columnCount())
-            layout.addWidget(label, row, 0, 1, 1)
-            print('3:', layout.rowCount(), layout.columnCount())
-            layout.addWidget(widget, row, 1)
-            print('4:', layout.rowCount(), layout.columnCount())
+                value = int(value)
+            self.parameters[name] = value
 
-        if self.comboFilter.currentText() == 'Gaussian':
+        if self.comboFilter.currentText() == 'Background Substraction':
+            self.code = BKG_SUBSTRACTION
+            self.parameters = {'background file':''}
+        elif self.comboFilter.currentText() == 'Gaussian':
             self.code = GAUSSIAN_FILTER
-            self.parameters = {'ksize':[0,0], 'sigmaX':0}
-
-            gridParameters = QGridLayout()
-            names = ['x kernal size', 'y kernal size', 'Sigma']
-            for name in names:
-                add_widget(gridParameters, name)
-            add_widget(gridParameters, '', push=True)
-            print(gridParameters.rowCount())
-            #push = gridParameters.itemAtPosition(gridParameters.rowCount(), 1).widget()
-            #push.clicked.connect(self.apply_filter)
-            self.groupBox.setLayout(gridParameters)
-            #layout = self.add_line(name='x kernal size')
-            #self.gridParameters.addWidget(layout)
-            #self.gridParameters.addWidget(self.add_line(name='y kernal size'))
-            #self.gridParameters.addWidget(self.add_line(name='Sigma'))
-            #self.gridParameters.addWidget(self.add_line(name='',push=True))
-            
+            self.parameters = {'x kernal size':0, 'y kernal size':0, 'sigmaX':0}
         elif self.comboFilter.currentText() == 'Median':
             self.code = MEDIAN_FILTER
-            self.parameters = {'ksize':0}
+            self.parameters = {'kernal size':0}
         elif self.comboFilter.currentText() == 'Bilateral':
             self.code = BILATERAL_FILTER
-            self.parameters = {'ksize':0, 'scolor':0, 'sspace':0}
+            self.parameters = {'kernal size':0, 'sigma color':0, 'sigma space':0}
         else:
             return
 
-    def apply_filter(self):
-        self.logger_signal.emit('INFO', str("Apply Filter"))
+        self.listParameters.clear()
+        for name in self.parameters.keys():
+            flag = False
+            if name == 'background file': flag = True
+            witem = QListWidgetItem(self.listParameters)
+            item = Item()
+            item.add_lineedit(name, makebtn=flag)
+            item.linevalue.textChanged.connect(lambda: set_value(item.label.text(), item.linevalue.text()))
+            item.linevalue.returnPressed.connect(lambda: set_value(item.label.text(), item.linevalue.text()))
+            self.listParameters.setItemWidget(witem, item)
+            self.listParameters.addItem(witem)
+            witem.setSizeHint(item.sizeHint())
 
-        print("Apply Filter")
-        pass
+    def apply_filter(self):
+        if self.code == BKG_SUBSTRACTION:
+            background = cv2.imread(self.parameters['background file'])
+            filtered_image = cv2.subtract(self.image, background)
+        if self.code == GAUSSIAN_FILTER:
+            ksize = (self.parameters['x kernal size'], self.parameters['y kernal size'])
+            sigmaX = self.parameters['sigmaX']
+            filtered_image = cv2.GaussianBlur(self.image, ksize=ksize, sigmaX=sigmaX)
+        elif self.code == MEDIAN_FILTER:
+            ksize = self.parameters['kernal size']
+            filtered_image = cv2.medianBlur(self.image, ksize=ksize)
+        elif self.code == BILATERAL_FILTER:
+            ksize = self.parameters['kernal size']
+            scolor = self.parameters['sigma color']
+            sspace = self.parameters['sigma space']
+            filtered_image = cv2.bilateralFilter(self.image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
+                
+        image = cv2.resize(filtered_image, dsize=(300, 300), interpolation=cv2.INTER_LINEAR)
+        height, width, channel = image.shape
+        qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
+        pixmap = QPixmap.fromImage(qImg)
+
+        self.labelImage.resize(image.width(), image.height())
+        self.labelImage.setPixmap(image)
 
     def click_ok(self):
+        self.logger_signal.emit('INFO', str(f"Apply {self.comboFilter.currentText()} Filter"))
         self.accept()
 
     def click_cancel(self):
