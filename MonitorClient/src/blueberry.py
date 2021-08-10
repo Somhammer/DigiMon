@@ -35,19 +35,11 @@ class Blueberry(QThread):
         self.image = None
         self.last_picture = None
 
+        self.filter_code = None
+        self.filter_para = {}
+
         self.transform_points = []
-        
-        self.picture_width = None
-        self.picture_height = None
-
-        self.profile_width = None
-        self.profile_height = None
-
-        self.xsize_width = None
-        self.xsize_height = None
-
-        self.ysize_width = None
-        self.ysize_height = None
+        self.pixel_to_mm = 1.0/float(20.0)
 
         self.working = True
 
@@ -70,6 +62,7 @@ class Blueberry(QThread):
             os.makedirs(os.path.join(self.outdir, 'profile'))
         if not os.path.exists(os.path.join(self.outdir, 'emittance')):
             os.makedirs(os.path.join(self.outdir, 'emittance'))
+        """
         try:
             self.camera = cv2.VideoCapture(self.url)
             retval, frame = self.camera.read()
@@ -82,6 +75,8 @@ class Blueberry(QThread):
         finally:
             if not self.connected:
                 self.thread_logger_signal.emit('ERROR', str("There is no connected camera"))
+        """
+        self.connected = True
 
     def set_action(self):
         self.thread_logger_signal.connect(self.parent.receive_log)
@@ -109,10 +104,10 @@ class Blueberry(QThread):
         ### Camera Control
         if self.idx == CAMERA_GAIN:
             self.gain = int(value)
-            self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
+            #self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
         elif self.idx == CAMERA_FPS:
             self.frame = int(value)
-            self.camera.set(cv2.CAP_PROP_FPS, self.frame)
+            #self.camera.set(cv2.CAP_PROP_FPS, self.frame)
         elif self.idx == CAMERA_EXPOSURE_TIME:
             # OpenCV exposure time: 2^(exposure_time_value)
             # exposure_time_value range: 0 ~ -13
@@ -128,15 +123,17 @@ class Blueberry(QThread):
             elif self.exposure_time < 7.8 and self.exposure_time >= 3.9: value = -8
             elif self.exposure_time < 3.9 and self.exposure_time >= 2: value = -9
             elif self.exposure_time < 2 and self.exposure_time >= 0.9766: value = -10
-            self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
+            #self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
         elif self.idx == CAMERA_REPEAT:
             self.repeat = value
-        ### Filter Settiing
-        else:
-            self.filter_code = idx
 
     def take_pictures(self):
         if not self.connected: return
+        self.last_picture = self.image
+        self.analyze_picture()
+        self.idx = CAMERA_SHOW
+
+        return
         for i in range(1, self.repeat+1):
             if not self.working: break
             if self.idx == CAMERA_STOP:
@@ -156,11 +153,15 @@ class Blueberry(QThread):
         if not self.connected: return
         if not self.working: return
 
+        """
         self.camera = cv2.VideoCapture(self.url)
         self.camera.set(3,self.picture_width)
         self.camera.set(4,self.picture_height)
         retval, self.image = self.camera.read()
-        image = cv2.resize(self.image, dsize=(self.picture_width, self.picture_height), interpolation=cv2.INTER_LINEAR)
+        """
+
+        self.image = cv2.imread("/home/seohyeon/work/BeamMonitor/SCFC/data/raw_data/500ms_6db.bmp")
+        image = self.image
 
         height, width, channel = image.shape
         qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
@@ -174,21 +175,10 @@ class Blueberry(QThread):
             image = image
         height, width, channel = image.shape
         # 좌표: 좌상, 좌하, 우상, 우하
-        original_points = np.float32([[0,0],[0,height],[width,0],[width,height]])
-        destination_points = np.float32([[0,0],[0,height],[width,0],[width,height]])
-        transform_matrix = cv2.getPerspectiveTransform(original_points, destination_points)
-        transformed_image = cv2.warpPerspective(image, transform_matrix, (height, width))
+        destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
+        transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), destination_points)
+        transformed_image = cv2.warpPerspective(image, transform_matrix, (800, 800))
         
-        bightness = []
-        #self.screen_signal.emit(var.DRAW_PROFILE, pixmap)
-        # 사진에서 pixel profile로 이미지 바꾸는 코드 만들어야 함!
-
-        # Generate Test Image...
-        transformed_image = np.random.normal(size=(200,200))
-        transformed_image[40:80, 40:120] += 4
-        transformed_image = pg.gaussianFilter(transformed_image, (15,15))
-        transformed_image += np.random.normal(size=(200,200)) * 0.1
-        #data = data.astype(np.uint8)
         if self.filter_code == BKG_SUBSTRACTION:
             background = cv2.imread(self.filter_para['background file'])
             filtered_image = cv2.subtract(transformed_image, background)
@@ -206,46 +196,44 @@ class Blueberry(QThread):
             filtered_image = cv2.bilateralFilter(transformed_image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
         else:
             filtered_image = transformed_image
+        
+        filtered_image = cv2.cvtColor(filtered_image, cv2.COLOR_BGR2GRAY)
 
         nxpixel, nypixel = filtered_image.shape
         
-        xbin_for_filling = [i for i in range(nxpixel)] * nypixel
-        ybin_for_filling = [i for i in range(nypixel)] * nxpixel
+        xbin_for_filling = []
+        for j in range(nypixel):
+            xbin_for_filling += [-20 + float(j) * self.pixel_to_mm for i in range(nxpixel)]
+        ybin_for_filling = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)] * nxpixel
         pixel_brightness = filtered_image.flatten()
-
+        
+        hist2d, xbin, ybin = np.histogram2d(xbin_for_filling, ybin_for_filling, bins=[nxpixel, nypixel], weights=pixel_brightness)
+        #hist2d = hist2d.T
         xhist, xbin = np.histogram(xbin_for_filling, bins=nxpixel, weights=pixel_brightness)
         yhist, ybin = np.histogram(ybin_for_filling, bins=nypixel, weights=pixel_brightness)
-        xhist_percent = np.asarray(xhist)/max(xhist) * 100
-        yhist_percent = np.asarray(yhist)/max(yhist) * 100
+        #xhist_percent = np.asarray(xhist)/max(xhist) * 100
+        #yhist_percent = np.asarray(yhist)/max(yhist) * 100
 
         xbin = np.delete(xbin, -1)
         ybin = np.delete(ybin, -1)
 
-        def func(x, a, b, c):
-            return a*np.exp(-(x-b)**2/2*c**2)
+        gauss = lambda x, a, b, c: a*np.exp(-(x-b)**2/2*c**2)
+        print(hist2d)
+        """
+        try:
+            xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)
+            xfit = gauss(xbin, *xfitpara)
+        except:
+            xfit = [0 for i in range(nxpixel)]
+        try:
+            yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
+            yfit = gauss(ybin, *yfitpara)
+        except:
+            yfit = [0 for i in range(nypixel)]
+        """
 
-        xfitpara, xfitconv = curve_fit(func, xbin, xhist_percent)
-        xfit = func(xbin, *xfitpara)
-        yfitpara, yfitconv = curve_fit(func, ybin, yhist_percent)
-        yfit = func(ybin, *yfitpara)
-
-        self.graph_signal.emit(PROFILE_SCREEN, filtered_image.tolist(), transformed_image.tolist())
-        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), list(zip(xbin, xfit)))
-        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), list(zip(ybin, yfit)))
-
-    @Slot(int, int, int)
-    def resize_image(self, target, width, height):
-        if target == PICTURE_SCREEN:
-            self.picture_width = width
-            self.picture_height = height
-        elif target == PROFILE_SCREEN:
-            self.profile_width = width
-            self.profile_height = height
-        elif target == XSIZE_SCREEN:
-            self.xsize_width = width
-            self.xsize_height = height
-        elif target == YSIZE_SCREEN:
-            self.ysize_width = width
-            self.ysize_height = height
-
+        #self.graph_signal.emit(PROFILE_SCREEN, filtered_image.tolist(), transformed_image.tolist())
+        self.graph_signal.emit(PROFILE_SCREEN, hist2d, transformed_image.tolist())
+        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist)), None)#, list(zip(xbin, xfit)))
+        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist)), None)#, list(zip(ybin, yfit)))
 

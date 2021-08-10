@@ -1,6 +1,7 @@
 import os, sys
 import logging
 import numpy as np
+import cv2
 
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
@@ -20,7 +21,6 @@ from src.logger import LogStringHandler
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     parameter_signal = Signal(int, int)
-    resize_signal = Signal(int, int, int)
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -39,7 +39,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.original_images = []
         self.filtered_images = []
 
-        self.transform_points= []
+        self.image_size = [None,None]
+        self.profile_size = [None,None]
+        self.beamx_size = [None, None]
+        self.beamy_size = [None, None]
 
         self.profile = None
         self.beamx = None
@@ -53,7 +56,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def set_action(self):
         # Signal connection
         self.parameter_signal.connect(self.blueberry.receive_signal)
-        self.resize_signal.connect(self.blueberry.resize_image)
         #self.blueberry.thread_signal.connect(self.receive_signal)
         #self.blueberry.thread_logger_signal.connect(self.receive_log)
 
@@ -104,11 +106,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.parameter_signal.emit(CAMERA_EXPOSURE_TIME, self.sliderExposureTime.value())
         self.parameter_signal.emit(CAMERA_REPEAT, self.sliderRepeat.value())
 
-        self.resize_signal.emit(PICTURE_SCREEN, self.wViewer.width(), self.wViewer.height())
-        self.resize_signal.emit(PROFILE_SCREEN, self.wProfile.width(), self.wProfile.height())
-        self.resize_signal.emit(XSIZE_SCREEN, self.wBeamSizeX.width(), self.wBeamSizeX.height())
-        self.resize_signal.emit(YSIZE_SCREEN, self.wBeamSizeY.width(), self.wBeamSizeY.height())
-
         self.blueberry.start()
 
     def connect_network(self, berry, checkbox):
@@ -125,16 +122,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         calibration = CalibrationWindow()
         r = calibration.return_para()
         if r:
-            self.transform_points = calibration.original_points
-            self.blueberry.transform_points = self.transform_points
+            self.blueberry.transform_points = calibration.original_points
 
     def filter_image(self):
-        filtering = FilterWindow(self, self.original_images[-1])
+        #filtering = FilterWindow(self, self.original_images[-1])
+        filtering = FilterWindow(self, cv2.imread("/home/seohyeon/work/BeamMonitor/SCFC/data/raw_data/500ms_6db.bmp"))
         r = filtering.return_para()
         if r:
-            filter_code = filtering.code
-            filter_para = filtering.parameters
-            self.parameter_signal(filter_code, None)
+            self.blueberry.filter_code = filtering.code
+            self.blueberry.filter_para = filtering.parameters
     
     def measure_emittance(self):
         emittance = EmittanceWindow()
@@ -149,10 +145,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.blackberry.send_command('quit')
 
     def resizeEvent(self, event):
-        self.resize_signal.emit(PICTURE_SCREEN, self.wViewer.width(), self.wViewer.height())
-        self.resize_signal.emit(PROFILE_SCREEN, self.wProfile.width(), self.wProfile.height())
-        self.resize_signal.emit(XSIZE_SCREEN, self.wBeamSizeX.width(), self.wBeamSizeX.height())
-        self.resize_signal.emit(YSIZE_SCREEN, self.wBeamSizeY.width(), self.wBeamSizeY.height())
+        self.image_size = [self.wViewer.width(), self.wViewer.height()]
+        self.profile_size = [self.wProfile.width(), self.wProfile.height()]
+        self.beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
+        self.beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
+
+        if self.labelViewer is not None:
+            self.labelViewer.resize(self.image_size[0], self.image_size[1])
+        if self.profile is not None:
+            self.profile.resize(self.profile_size[0], self.profile_size[1])
+        if self.beamx is not None:
+            self.beamx.resize(self.beamx_size[0], self.beamx_size[1])
+        if self.beamy is not None:
+            self.beamy.resize(self.beamy_size[0], self.beamy_size[1])
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to quit?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -182,53 +187,65 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         gara_pen = pg.mkPen(color=(255,255,255), width=0)
 
         if target == PICTURE_SCREEN:
+            graphics = graphics.scaled(self.image_size[0], self.image_size[1])
             self.labelViewer.resize(graphics.width(), graphics.height())
             self.labelViewer.setPixmap(graphics)
         elif target == PROFILE_SCREEN:
             # Example Image...
+            
             from colour import Color
-            blue, red = Color('blue'), Color('red')
-            colors = blue.range_to(red, 256)
+            blue, red = Color(hex="#dedeff"), Color('red')
+            colors = blue.range_to(red, 255)
             colors_array = np.array([np.array(color.get_rgb()) * 255 for color in colors])
             look_up_table = colors_array.astype(np.uint8)
-
+            
             image = pg.ImageItem()
+            #image.setImage(graphics)
             image.setLookupTable(look_up_table)
             image.setImage(np.array(graphics))
+            scale = self.blueberry.pixel_to_mm
+            image.setTransform(QTransform().scale(scale, scale).translate(-400,-400))
+            #image.setTransform(QTransform().translate(-40, -40))
 
-            self.gridProfile.removeWidget(self.profile)
+            if self.profile is not None:
+                self.gridProfile.removeWidget(self.profile)
             gview = pg.GraphicsView()
             glayout = pg.GraphicsLayout(border=(255,255,255))
             gview.setCentralItem(glayout)
             plot = glayout.addPlot(title="Beam Profile")
+            plot.showGrid(x=True, y=True)
             plot.setLabel('left', 'Vertical', 'mm')
             plot.setLabel('bottom', 'Horizontal', 'mm')
-            plot.setXRange(0, 200)
-            plot.setYRange(0, 200)
+            plot.setXRange(-20, 20)
+            plot.setYRange(-20, 20)
             plot.addItem(image)
 
             self.profile = gview
             self.profile.setBackground('w')
+            self.profile.resize(self.profile_size[0], self.profile_size[1])
             self.gridProfile.addWidget(self.profile)
+            self.wProfile.resize(self.profile_size[0], self.profile_size[1])
 
-            self.original_images.append(np.array(additional_curves))
+            #self.original_images.append(np.array(additional_curves))
             self.filtered_images.append(np.array(graphics))
 
         elif target == XSIZE_SCREEN:
-            self.gridBeamSizeX.removeWidget(self.beamx)
+            if self.beamx is not None:
+                self.gridBeamSizeX.removeWidget(self.beamx)
             plot = pg.PlotWidget(title="Vertical axis intensity")
             plot.showGrid(x=True, y=True)
             plot.setLabel('left', 'Intensity', '%')
             plot.setLabel('bottom', 'Vertical', 'mm')
-            plot.setXRange(0, len(graphics))
-            plot.setYRange(0, 100)
             x1 = []
             y1 = []
             for value in graphics:
                 x1.append(value[0])
                 y1.append(value[1])
-            plot.resize(self.blueberry.xsize_width, self.blueberry.xsize_height)
-            plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            #plot.resize(self.blueberry.xsize_width, self.blueberry.xsize_height)
+            #plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            plot.setXRange(min(x1),max(x1))
+            plot.setYRange(min(y1), max(y1)+5)
+
 
             plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
@@ -241,21 +258,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             plot.setBackground('w')
 
             self.beamx = plot
+            self.beamx.resize(self.beamx_size[0], self.beamx_size[1])
             self.gridBeamSizeX.addWidget(self.beamx)
+            self.wBeamSizeX.resize(self.beamx_size[0], self.beamx_size[1])
         elif target == YSIZE_SCREEN:
-            self.gridBeamSizeY.removeWidget(self.beamy)
+            if self.beamy is not None:
+                self.gridBeamSizeY.removeWidget(self.beamy)
             plot = pg.PlotWidget(title="Horizontal axis intensity")
             plot.showGrid(x=True, y=True)
             plot.setLabel('left', 'Intensity', '%')
             plot.setLabel('bottom', 'Horizontal', 'mm')
-            plot.setXRange(0, len(graphics))
             plot.setYRange(0, 100)
             x1, y1 = [], []
             for value in graphics:
                 x1.append(value[0])
                 y1.append(value[1])
-            plot.resize(self.blueberry.ysize_width, self.blueberry.ysize_height)
-            plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            plot.setXRange(min(x1),max(x1))
+            plot.setYRange(min(y1), max(y1)+5)
+            #plot.resize(self.blueberry.ysize_width, self.blueberry.ysize_height)
+            #plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
             plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
@@ -269,9 +290,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             plot.setBackground('w')
 
             self.beamy = plot
+            self.beamy.resize(self.beamy_size[0], self.beamy_size[1])
             self.gridBeamSizeY.addWidget(self.beamy)
+            self.wBeamSizeY.resize(self.beamy_size[0], self.beamy_size[1])
         else:
             return
+        
+        self.wViewer.resize(self.image_size[0], self.image_size[1])
 
     def set_layout(self, widget, xrange=None, yrange=None, zrange=None):
         widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)

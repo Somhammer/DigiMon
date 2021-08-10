@@ -17,34 +17,14 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.parent = parent
         self.setupUi(self)
 
-        """
-            # Example Image...
-        from colour import Color
-        blue, red = Color('blue'), Color('red')
-        colors = blue.range_to(red, 256)
-        colors_array = np.array([np.array(color.get_rgb()) * 255 for color in colors])
-        look_up_table = colors_array.astype(np.uint8)
-        image = cv2.LUT(image, look_up_table)
-        """
-
-        #print(image)
-        #self.image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-        #self.code = None
-        #self.parameters = {}
-
-
-        #self.image = cv2.Laplacian(image, cv2.CV_64F)
         self.image = image
-        #self.image = cv2.convertScaleAbs(self.image)
-        #self.image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-        #self.image = cv2.resize(self.image, dsize=(300, 300), interpolation=cv2.INTER_LINEAR)
-        #height, width = self.image.shape
-        #channel = 1
-        #qImg = QImage(image.data, width, height, width*channel, QImage.Format_Grayscale16)
-        #pixmap = QPixmap.fromImage(qImg)
+        image = cv2.resize(self.image, dsize=(300, 300), interpolation=cv2.INTER_LINEAR)
+        height, width, channel = image.shape
+        qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
+        pixmap = QPixmap.fromImage(qImg)
 
-        #self.labelImage.resize(width, height)
-        #self.labelImage.setPixmap(pixmap)
+        self.labelImage.resize(width, height)
+        self.labelImage.setPixmap(pixmap)
 
         self.set_action()
         self.show()
@@ -138,8 +118,8 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
         pixmap = QPixmap.fromImage(qImg)
 
-        self.labelImage.resize(image.width(), image.height())
-        self.labelImage.setPixmap(image)
+        self.labelImage.resize(width, height)
+        self.labelImage.setPixmap(pixmap)
 
     def click_ok(self):
         self.logger_signal.emit('INFO', str(f"Apply {self.comboFilter.currentText()} Filter"))

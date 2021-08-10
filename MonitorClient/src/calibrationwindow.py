@@ -82,7 +82,8 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
         self.pushConvert.clicked.connect(self.convert_image)
 
     def open_image(self):
-        fname = QFileDialog.getOpenFileName(self, "Select Image")[0]
+        image_extension = ["Image file (*.bmp *.jpg *jpeg *png)"]
+        fname = QFileDialog.getOpenFileName(self, "Select Image", selectedFilter=image_extension[0], filter='\n'.join(i for i in image_extension))[0]
         if fname != '':
             self.set_image(fname)
     
@@ -170,9 +171,9 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
 
         # 좌표: 좌상, 좌하, 우상, 우하
         original_points = np.float32([upper_left, lower_left, upper_right, lower_right])
-        destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
+        destination_points = np.float32([[200,200],[200,1000],[1000,200],[1000,1000]]) # 이미지 크기는 나중에 바꿀 수 있음
         transform_matrix = cv2.getPerspectiveTransform(original_points, destination_points)
-        self.transformed_image = cv2.warpPerspective(self.image_origin, transform_matrix, (800,800))
+        self.transformed_image = cv2.warpPerspective(self.image_origin, transform_matrix, (1200, 1200))
 
         self.transformed_image2 = cv2.resize(self.transformed_image, dsize=(400,400), interpolation=cv2.INTER_LINEAR)
         height, width, channel = self.transformed_image2.shape
