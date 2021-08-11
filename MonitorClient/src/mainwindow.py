@@ -21,6 +21,7 @@ from src.logger import LogStringHandler
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     parameter_signal = Signal(int, int)
+    redraw_signal = Signal(str)
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -40,13 +41,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.filtered_images = []
 
         self.image_size = [None,None]
-        self.profile_size = [None,None]
-        self.beamx_size = [None, None]
-        self.beamy_size = [None, None]
+        self.plot_profile_size = [None,None]
+        self.plot_beamx_size = [None, None]
+        self.plot_beamy_size = [None, None]
 
         self.profile = None
         self.beamx = None
         self.beamy = None
+
+        self.beamx_size = []
+        self.beamy_size = []
 
         self.set_action()
 
@@ -56,6 +60,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def set_action(self):
         # Signal connection
         self.parameter_signal.connect(self.blueberry.receive_signal)
+        self.redraw_signal.connect(self.blueberry.redraw_signal)
         #self.blueberry.thread_signal.connect(self.receive_signal)
         #self.blueberry.thread_logger_signal.connect(self.receive_log)
 
@@ -88,7 +93,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Emittance Measurement
         self.pushCalibration.clicked.connect(self.calibrate_image)
         self.pushFilter.clicked.connect(self.filter_image)
-        #self.pushCalculate.clicked.connect()
+
+        self.listProfiles.setContextMenuPolicy(Qt.ActionsContectMenu)
+        self.listProfiles.itemDoubleClicked.connect(lambda: self.redraw_signal(self.listProfiles.currentItem.text()))
+        actCalibration = QAction("Calibrate", self.listProfiles)
+        actCalibration.trigger(self.calibrate_image)
+        self.listProfiles.addAction(actCalibration)
+        actFiltering = QAction("Filter", self.listProfiles)
+        actFiltering.trigger(self.filter_image)
+        self.listProfiles.addAction(actFiltering)
+        actDeletion = QAction("Delete", self.listProfiles)
+        actDeletion.trigger(self.delete_image)
+        self.listProfiles.addAction(actDeletion)
+        self.pushCalculate.clicked.connect(self.measure_emittance)
 
     def set_checked(self, checkbox, checked):
         if checked:
@@ -132,11 +149,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.blueberry.filter_code = filtering.code
             self.blueberry.filter_para = filtering.parameters
     
+    def delete_image(self):
+        pass
+
     def measure_emittance(self):
-        emittance = EmittanceWindow()
+        emittance = EmittanceWindow(self, self.images_names, self.xbeam_size, self.ybeam_size)
         r = emittance.return_para()
         if r:
-            pass
+            self.lineXemittance.setText(emittance.emittance[0])
+            self.lineYemittance.setText(emittance.emittance[1])
+            self.lineAlphaX.setText(emittance.alpha[0])
+            self.lineAlphaY.setText(emittance.alpha[1])
+            self.lineBetaX.setText(emittance.beta[0])
+            self.lineBetaY.setText(emittance.beta[1])
+            self.lineGammaX.setText(emittance.gamma[0])
+            self.lineGammaY.setText(emittance.gamma[1])
 
     def close_server(self):
         hidden = HiddenWindow()
@@ -146,18 +173,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def resizeEvent(self, event):
         self.image_size = [self.wViewer.width(), self.wViewer.height()]
-        self.profile_size = [self.wProfile.width(), self.wProfile.height()]
-        self.beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
-        self.beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
+        self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
+        self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
+        self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
 
         if self.labelViewer is not None:
             self.labelViewer.resize(self.image_size[0], self.image_size[1])
         if self.profile is not None:
-            self.profile.resize(self.profile_size[0], self.profile_size[1])
+            self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
         if self.beamx is not None:
-            self.beamx.resize(self.beamx_size[0], self.beamx_size[1])
+            self.beamx.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
         if self.beamy is not None:
-            self.beamy.resize(self.beamy_size[0], self.beamy_size[1])
+            self.beamy.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to quit?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -180,6 +207,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.logger.error(message)
         elif level == 'CRITICAL':
             self.logger.critical(message)
+
+    @Slot(str)
+    def save_image(self, image):
+        self.listProfile.addItem(QListWidgetItem(str(image)))
 
     @Slot(int, list, list)
     @Slot(int, QPixmap)
@@ -220,32 +251,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             plot.setYRange(-20, 20)
             plot.addItem(image)
 
+            txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[1]:.2f}) mm\nSize: ({additional_curves[2]:.2f}, {additional_curves[3]:.2f}) mm"
+            text = pg.TextItem(text=txt_pos, color=(0,0,0))
+            text.setPos(-15,15)
+            plot.addItem(text)
+
+            self.beamx_size.append(additional_curves[2])
+            self.beamy_size.append(additional_curves[3])
+
             self.profile = gview
             self.profile.setBackground('w')
-            self.profile.resize(self.profile_size[0], self.profile_size[1])
+            self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
             self.gridProfile.addWidget(self.profile)
-            self.wProfile.resize(self.profile_size[0], self.profile_size[1])
+            self.wProfile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
 
-            #self.original_images.append(np.array(additional_curves))
             self.filtered_images.append(np.array(graphics))
 
         elif target == XSIZE_SCREEN:
             if self.beamx is not None:
                 self.gridBeamSizeX.removeWidget(self.beamx)
-            plot = pg.PlotWidget(title="Vertical axis intensity")
+            plot = pg.PlotWidget(title="Horizontal axis intensity")
             plot.showGrid(x=True, y=True)
             plot.setLabel('left', 'Intensity', '%')
-            plot.setLabel('bottom', 'Vertical', 'mm')
+            plot.setLabel('bottom', 'Horizontal', 'mm')
             x1 = []
             y1 = []
             for value in graphics:
                 x1.append(value[0])
                 y1.append(value[1])
-            #plot.resize(self.blueberry.xsize_width, self.blueberry.xsize_height)
-            #plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             plot.setXRange(min(x1),max(x1))
             plot.setYRange(min(y1), max(y1)+5)
-
 
             plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
@@ -258,16 +293,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             plot.setBackground('w')
 
             self.beamx = plot
-            self.beamx.resize(self.beamx_size[0], self.beamx_size[1])
+            self.beamx.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
             self.gridBeamSizeX.addWidget(self.beamx)
-            self.wBeamSizeX.resize(self.beamx_size[0], self.beamx_size[1])
+            self.wBeamSizeX.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
         elif target == YSIZE_SCREEN:
             if self.beamy is not None:
                 self.gridBeamSizeY.removeWidget(self.beamy)
-            plot = pg.PlotWidget(title="Horizontal axis intensity")
+            plot = pg.PlotWidget(title="Vertical axis intensity")
             plot.showGrid(x=True, y=True)
             plot.setLabel('left', 'Intensity', '%')
-            plot.setLabel('bottom', 'Horizontal', 'mm')
+            plot.setLabel('bottom', 'Vertical', 'mm')
             plot.setYRange(0, 100)
             x1, y1 = [], []
             for value in graphics:
@@ -275,8 +310,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 y1.append(value[1])
             plot.setXRange(min(x1),max(x1))
             plot.setYRange(min(y1), max(y1)+5)
-            #plot.resize(self.blueberry.ysize_width, self.blueberry.ysize_height)
-            #plot.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
             plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
@@ -290,17 +323,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             plot.setBackground('w')
 
             self.beamy = plot
-            self.beamy.resize(self.beamy_size[0], self.beamy_size[1])
+            self.beamy.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
             self.gridBeamSizeY.addWidget(self.beamy)
-            self.wBeamSizeY.resize(self.beamy_size[0], self.beamy_size[1])
+            self.wBeamSizeY.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
         else:
             return
         
         self.wViewer.resize(self.image_size[0], self.image_size[1])
-
-    def set_layout(self, widget, xrange=None, yrange=None, zrange=None):
-        widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        widget.showGrid(x=True, y=True)
-        widget.setBackground('w')
-        if xrange is not None:
-            widget.setXRange(xrange[0],xrange[1])

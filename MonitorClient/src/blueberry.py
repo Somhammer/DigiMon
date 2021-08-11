@@ -22,6 +22,7 @@ class Blueberry(QThread):
     thread_logger_signal = Signal(str, str)
     screen_signal = Signal(int, QPixmap)
     graph_signal = Signal(int, list, list)
+    save_signal = Signal(str)
 
     #chart_signal = Signal(QChart)
     def __init__(self, parent=None):
@@ -82,6 +83,7 @@ class Blueberry(QThread):
         self.thread_logger_signal.connect(self.parent.receive_log)
         self.screen_signal.connect(self.parent.update_screen)
         self.graph_signal.connect(self.parent.update_screen)
+        self.save_signal.connect(self.parent.save_image)
 
     def run(self):
         while self.working:
@@ -126,6 +128,10 @@ class Blueberry(QThread):
             #self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
         elif self.idx == CAMERA_REPEAT:
             self.repeat = value
+    
+    @Slot(str)
+    def redraw_signal(self, image):
+        self.analyze_picture(image)
 
     def take_pictures(self):
         if not self.connected: return
@@ -143,6 +149,7 @@ class Blueberry(QThread):
             self.show_screen()
             self.analyze_picture()
             outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
+            self.save_signal.emit(outname)
             cv2.imwrite(outname, self.image)
             self.thread_logger_signal.emit('INFO', str(f"Take a picture {i} - Saved as {outname}"))
             #key = cv2.waitKey(self.frame)
@@ -171,6 +178,8 @@ class Blueberry(QThread):
     def analyze_picture(self, image=None, filter=None):
         if image is None:
             image = self.last_picture
+        elif str(type(image)) == "<class 'str'>":
+            image = cv2.imroad(image)
         else:
             image = image
         height, width, channel = image.shape
@@ -200,40 +209,52 @@ class Blueberry(QThread):
         filtered_image = cv2.cvtColor(filtered_image, cv2.COLOR_BGR2GRAY)
 
         nxpixel, nypixel = filtered_image.shape
-        
-        xbin_for_filling = []
-        for j in range(nypixel):
-            xbin_for_filling += [-20 + float(j) * self.pixel_to_mm for i in range(nxpixel)]
-        ybin_for_filling = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)] * nxpixel
-        pixel_brightness = filtered_image.flatten()
-        
-        hist2d, xbin, ybin = np.histogram2d(xbin_for_filling, ybin_for_filling, bins=[nxpixel, nypixel], weights=pixel_brightness)
+        xbin = [-20 + float(i) * self.pixel_to_mm for i in range(nxpixel)]
+        ybin = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)]
+
+        #xbin_for_filling = []
+        #for j in range(nypixel):
+        #    xbin_for_filling += [-20 + float(j) * self.pixel_to_mm for i in range(nxpixel)]
+        #ybin_for_filling = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)] * nxpixel
+        #pixel_brightness = filtered_image.flatten()
+
+        #hist2d, xbin, ybin = np.histogram2d(xbin_for_filling, ybin_for_filling, bins=[nxpixel, nypixel], weights=pixel_brightness)
         #hist2d = hist2d.T
-        xhist, xbin = np.histogram(xbin_for_filling, bins=nxpixel, weights=pixel_brightness)
-        yhist, ybin = np.histogram(ybin_for_filling, bins=nypixel, weights=pixel_brightness)
+        # Numpy histogram 으로 1d histogram 만들면 filling이 이상하게 됨... 왜지?
+        #xhist, xbin = np.histogram(xbin_for_filling, bins=nxpixel, weights=pixel_brightness)
+        #yhist, ybin = np.histogram(ybin_for_filling, bins=nypixel, weights=pixel_brightness)
         #xhist_percent = np.asarray(xhist)/max(xhist) * 100
         #yhist_percent = np.asarray(yhist)/max(yhist) * 100
 
-        xbin = np.delete(xbin, -1)
-        ybin = np.delete(ybin, -1)
+        xhist = [0 for i in range(nxpixel)]
+        yhist = [0 for i in range(nypixel)]
+        for xidx, irow in enumerate(filtered_image):
+            for yidx, val in enumerate(irow):
+                xhist[xidx] += val
+                yhist[yidx] += val
 
         gauss = lambda x, a, b, c: a*np.exp(-(x-b)**2/2*c**2)
-        print(hist2d)
-        """
+        xhist_percent = np.asarray(xhist)/max(xhist) * 100
+        yhist_percent = np.asarray(yhist)/max(yhist) * 100
+        
         try:
             xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)
             xfit = gauss(xbin, *xfitpara)
+            xfitline = list(zip(xbin, xfit))
         except:
-            xfit = [0 for i in range(nxpixel)]
+            xfitline = None
         try:
             yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
             yfit = gauss(ybin, *yfitpara)
+            yfitline = list(zip(ybin, yfit))
         except:
-            yfit = [0 for i in range(nypixel)]
-        """
-
-        #self.graph_signal.emit(PROFILE_SCREEN, filtered_image.tolist(), transformed_image.tolist())
-        self.graph_signal.emit(PROFILE_SCREEN, hist2d, transformed_image.tolist())
-        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist)), None)#, list(zip(xbin, xfit)))
-        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist)), None)#, list(zip(ybin, yfit)))
+            yfitline = None
+        
+        xmax, ymax = np.argmax(xhist), np.argmax(yhist)
+        xlength = len(np.where(xhist_percent > 32)[0]) * self.pixel_to_mm
+        ylength = len(np.where(yhist_percent > 32)[0]) * self.pixel_to_mm
+        
+        self.graph_signal.emit(PROFILE_SCREEN, filtered_image, [xbin[xmax], ybin[ymax], xlength, ylength])
+        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
+        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
 
