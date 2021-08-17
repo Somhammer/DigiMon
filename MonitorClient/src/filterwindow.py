@@ -126,7 +126,11 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.accept()
 
     def click_cancel(self):
-        self.reject()
+        reply = QMessageBox.question(self, 'Message', 'Are you sure to cancel it?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.reject()
+        else:
+            self.ignore()
     
     def return_para(self):
         return super().exec_()

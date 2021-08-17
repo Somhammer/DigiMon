@@ -136,6 +136,8 @@ class Blueberry(QThread):
     def take_pictures(self):
         if not self.connected: return
         self.last_picture = self.image
+        outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
+        self.save_signal.emit(outname)
         self.analyze_picture()
         self.idx = CAMERA_SHOW
 
@@ -147,14 +149,35 @@ class Blueberry(QThread):
                 break
             self.last_picture = self.image
             self.show_screen()
-            self.analyze_picture()
             outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
             self.save_signal.emit(outname)
             cv2.imwrite(outname, self.image)
+            self.analyze_picture()
             self.thread_logger_signal.emit('INFO', str(f"Take a picture {i} - Saved as {outname}"))
             #key = cv2.waitKey(self.frame)
             self.sleep(self.exposure_time * 0.001)
         self.idx = CAMERA_SHOW
+
+    def filter_image(self, image):
+        if self.filter_code == BKG_SUBSTRACTION:
+            background = cv2.imread(self.filter_para['background file'])
+            filtered_image = cv2.subtract(image, background)
+        if self.filter_code == GAUSSIAN_FILTER:
+            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
+            sigmaX = self.filter_para['sigmaX']
+            filtered_image = cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigmaX)
+        elif self.filter_code == MEDIAN_FILTER:
+            ksize = self.filter_para['kernal size']
+            filtered_image = cv2.medianBlur(image, ksize=ksize)
+        elif self.filter_code == BILATERAL_FILTER:
+            ksize = self.filter_para['kernal size']
+            scolor = self.filter_para['sigma color']
+            sspace = self.filter_para['sigma space']
+            filtered_image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
+        else:
+            filtered_image = image
+        
+        return filtered_image
 
     def show_screen(self):
         if not self.connected: return
@@ -168,47 +191,30 @@ class Blueberry(QThread):
         """
 
         self.image = cv2.imread("/home/seohyeon/work/BeamMonitor/SCFC/data/raw_data/500ms_6db.bmp")
-        image = self.image
+        image = self.filter_image(self.image)
 
         height, width, channel = image.shape
         qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
         pixmap = QPixmap.fromImage(qImg)
         self.screen_signal.emit(PICTURE_SCREEN, pixmap)
 
-    def analyze_picture(self, image=None, filter=None):
+    def analyze_picture(self, image=None):
         if image is None:
             image = self.last_picture
         elif str(type(image)) == "<class 'str'>":
             image = cv2.imroad(image)
         else:
             image = image
+        image = self.filter_image(image)
         height, width, channel = image.shape
         # 좌표: 좌상, 좌하, 우상, 우하
         destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
         transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), destination_points)
         transformed_image = cv2.warpPerspective(image, transform_matrix, (800, 800))
         
-        if self.filter_code == BKG_SUBSTRACTION:
-            background = cv2.imread(self.filter_para['background file'])
-            filtered_image = cv2.subtract(transformed_image, background)
-        if self.filter_code == GAUSSIAN_FILTER:
-            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
-            sigmaX = self.filter_para['sigmaX']
-            filtered_image = cv2.GaussianBlur(transformed_image, ksize=ksize, sigmaX=sigmaX)
-        elif self.filter_code == MEDIAN_FILTER:
-            ksize = self.filter_para['kernal size']
-            filtered_image = cv2.medianBlur(transformed_image, ksize=ksize)
-        elif self.filter_code == BILATERAL_FILTER:
-            ksize = self.filter_para['kernal size']
-            scolor = self.filter_para['sigma color']
-            sspace = self.filter_para['sigma space']
-            filtered_image = cv2.bilateralFilter(transformed_image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
-        else:
-            filtered_image = transformed_image
-        
-        filtered_image = cv2.cvtColor(filtered_image, cv2.COLOR_BGR2GRAY)
+        transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
 
-        nxpixel, nypixel = filtered_image.shape
+        nxpixel, nypixel = transformed_image.shape
         xbin = [-20 + float(i) * self.pixel_to_mm for i in range(nxpixel)]
         ybin = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)]
 
@@ -216,7 +222,7 @@ class Blueberry(QThread):
         #for j in range(nypixel):
         #    xbin_for_filling += [-20 + float(j) * self.pixel_to_mm for i in range(nxpixel)]
         #ybin_for_filling = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)] * nxpixel
-        #pixel_brightness = filtered_image.flatten()
+        #pixel_brightness = transformed_image.flatten()
 
         #hist2d, xbin, ybin = np.histogram2d(xbin_for_filling, ybin_for_filling, bins=[nxpixel, nypixel], weights=pixel_brightness)
         #hist2d = hist2d.T
@@ -228,7 +234,7 @@ class Blueberry(QThread):
 
         xhist = [0 for i in range(nxpixel)]
         yhist = [0 for i in range(nypixel)]
-        for xidx, irow in enumerate(filtered_image):
+        for xidx, irow in enumerate(transformed_image):
             for yidx, val in enumerate(irow):
                 xhist[xidx] += val
                 yhist[yidx] += val
@@ -254,7 +260,7 @@ class Blueberry(QThread):
         xlength = len(np.where(xhist_percent > 32)[0]) * self.pixel_to_mm
         ylength = len(np.where(yhist_percent > 32)[0]) * self.pixel_to_mm
         
-        self.graph_signal.emit(PROFILE_SCREEN, filtered_image, [xbin[xmax], ybin[ymax], xlength, ylength])
+        self.graph_signal.emit(PROFILE_SCREEN, transformed_image, [xbin[xmax], ybin[ymax], xlength, ylength])
         self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
         self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
 

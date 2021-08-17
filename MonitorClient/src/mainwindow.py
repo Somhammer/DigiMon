@@ -93,18 +93,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Emittance Measurement
         self.pushCalibration.clicked.connect(self.calibrate_image)
         self.pushFilter.clicked.connect(self.filter_image)
-
-        self.listProfiles.setContextMenuPolicy(Qt.ActionsContectMenu)
-        self.listProfiles.itemDoubleClicked.connect(lambda: self.redraw_signal(self.listProfiles.currentItem.text()))
-        actCalibration = QAction("Calibrate", self.listProfiles)
-        actCalibration.trigger(self.calibrate_image)
-        self.listProfiles.addAction(actCalibration)
-        actFiltering = QAction("Filter", self.listProfiles)
-        actFiltering.trigger(self.filter_image)
-        self.listProfiles.addAction(actFiltering)
-        actDeletion = QAction("Delete", self.listProfiles)
-        actDeletion.trigger(self.delete_image)
-        self.listProfiles.addAction(actDeletion)
         self.pushCalculate.clicked.connect(self.measure_emittance)
 
     def set_checked(self, checkbox, checked):
@@ -153,17 +141,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def measure_emittance(self):
-        emittance = EmittanceWindow(self, self.images_names, self.xbeam_size, self.ybeam_size)
+        emittance = EmittanceWindow(self)
         r = emittance.return_para()
         if r:
-            self.lineXemittance.setText(emittance.emittance[0])
-            self.lineYemittance.setText(emittance.emittance[1])
-            self.lineAlphaX.setText(emittance.alpha[0])
-            self.lineAlphaY.setText(emittance.alpha[1])
-            self.lineBetaX.setText(emittance.beta[0])
-            self.lineBetaY.setText(emittance.beta[1])
-            self.lineGammaX.setText(emittance.gamma[0])
-            self.lineGammaY.setText(emittance.gamma[1])
+            self.lineEmittanceX.setText(emittance.lineEmittanceX.text())
+            self.lineEmittanceY.setText(emittance.lineEmittanceY.text())
+            self.lineAlphaX.setText(emittance.lineAlphaX.text())
+            self.lineAlphaY.setText(emittance.lineAlphaY.text())
+            self.lineBetaX.setText(emittance.lineBetaX.text())
+            self.lineBetaY.setText(emittance.lineBetaY.text())
+            self.lineGammaX.setText(emittance.lineGammaX.text())
+            self.lineGammaY.setText(emittance.lineGammaY.text())
+
+    def update_table(self, gradient, beamx, beamy, image):
+        self.tableProfiles.setRowCount(self.tableProfiles.rowCount() + 1)
+        twidget = QTableWidgetItem(str(gradient))
+        self.tableProfiles.setItem(self.tableProfiles.rowCount()-1, 0, twidget)
+
+        for idx, value in enumerate([f'{beamx:.2f}', f'{beamy:.2f}', image.split('/')[-1]]):
+            twidget = QTableWidgetItem(str(value))
+            twidget.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            self.tableProfiles.setItem(self.tableProfiles.rowCount()-1, idx + 1, twidget)
 
     def close_server(self):
         hidden = HiddenWindow()
@@ -210,7 +208,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot(str)
     def save_image(self, image):
-        self.listProfile.addItem(QListWidgetItem(str(image)))
+        self.images_names.append(str(image))
 
     @Slot(int, list, list)
     @Slot(int, QPixmap)
@@ -266,6 +264,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.wProfile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
 
             self.filtered_images.append(np.array(graphics))
+            self.update_table(self.lineFieldGradient.text(), additional_curves[2], additional_curves[3], self.images_names[-1])
 
         elif target == XSIZE_SCREEN:
             if self.beamx is not None:
@@ -329,4 +328,4 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             return
         
-        self.wViewer.resize(self.image_size[0], self.image_size[1])
+        #self.wViewer.resize(self.image_size[0], self.image_size[1])

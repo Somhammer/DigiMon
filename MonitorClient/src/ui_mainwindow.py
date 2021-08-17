@@ -60,28 +60,22 @@ class Ui_MainWindow(object):
         self.groupEmittance.setFont(font)
         self.gridEmittance = QGridLayout(self.groupEmittance)
         self.gridEmittance.setObjectName(u"gridEmittance")
-        self.labelYemittance = QLabel(self.groupEmittance)
-        self.labelYemittance.setObjectName(u"labelYemittance")
-        self.labelYemittance.setMaximumSize(QSize(10, 16777215))
+        self.labelEmittanceUnitY = QLabel(self.groupEmittance)
+        self.labelEmittanceUnitY.setObjectName(u"labelEmittanceUnitY")
+        self.labelEmittanceUnitY.setMaximumSize(QSize(70, 16777215))
         font1 = QFont()
         font1.setPointSize(10)
         font1.setBold(False)
-        self.labelYemittance.setFont(font1)
+        self.labelEmittanceUnitY.setFont(font1)
 
-        self.gridEmittance.addWidget(self.labelYemittance, 1, 0, 1, 1)
+        self.gridEmittance.addWidget(self.labelEmittanceUnitY, 1, 2, 1, 1)
 
-        self.labelXemittanceUnit = QLabel(self.groupEmittance)
-        self.labelXemittanceUnit.setObjectName(u"labelXemittanceUnit")
-        self.labelXemittanceUnit.setMaximumSize(QSize(70, 16777215))
-        self.labelXemittanceUnit.setFont(font1)
+        self.labelEmittanceUnitX = QLabel(self.groupEmittance)
+        self.labelEmittanceUnitX.setObjectName(u"labelEmittanceUnitX")
+        self.labelEmittanceUnitX.setMaximumSize(QSize(70, 16777215))
+        self.labelEmittanceUnitX.setFont(font1)
 
-        self.gridEmittance.addWidget(self.labelXemittanceUnit, 0, 2, 1, 1)
-
-        self.pushCalculate = QPushButton(self.groupEmittance)
-        self.pushCalculate.setObjectName(u"pushCalculate")
-        self.pushCalculate.setFont(font1)
-
-        self.gridEmittance.addWidget(self.pushCalculate, 2, 0, 1, 3)
+        self.gridEmittance.addWidget(self.labelEmittanceUnitX, 0, 2, 1, 1)
 
         self.twissFrame = QFrame(self.groupEmittance)
         self.twissFrame.setObjectName(u"twissFrame")
@@ -190,39 +184,84 @@ class Ui_MainWindow(object):
 
         self.gridEmittance.addWidget(self.twissFrame, 0, 3, 3, 1)
 
-        self.labelYemittanceUnit = QLabel(self.groupEmittance)
-        self.labelYemittanceUnit.setObjectName(u"labelYemittanceUnit")
-        self.labelYemittanceUnit.setMaximumSize(QSize(70, 16777215))
-        self.labelYemittanceUnit.setFont(font1)
+        self.pushCalculate = QPushButton(self.groupEmittance)
+        self.pushCalculate.setObjectName(u"pushCalculate")
+        self.pushCalculate.setFont(font1)
 
-        self.gridEmittance.addWidget(self.labelYemittanceUnit, 1, 2, 1, 1)
+        self.gridEmittance.addWidget(self.pushCalculate, 2, 0, 1, 3)
 
-        self.labelXemittance = QLabel(self.groupEmittance)
-        self.labelXemittance.setObjectName(u"labelXemittance")
-        self.labelXemittance.setMaximumSize(QSize(10, 16777215))
-        self.labelXemittance.setFont(font1)
+        self.lineEmittanceY = QLineEdit(self.groupEmittance)
+        self.lineEmittanceY.setObjectName(u"lineEmittanceY")
+        sizePolicy1.setHeightForWidth(self.lineEmittanceY.sizePolicy().hasHeightForWidth())
+        self.lineEmittanceY.setSizePolicy(sizePolicy1)
+        self.lineEmittanceY.setMaximumSize(QSize(100, 16777215))
+        self.lineEmittanceY.setFont(font1)
+        self.lineEmittanceY.setReadOnly(True)
 
-        self.gridEmittance.addWidget(self.labelXemittance, 0, 0, 1, 1)
+        self.gridEmittance.addWidget(self.lineEmittanceY, 1, 1, 1, 1)
 
-        self.lineYemittance = QLineEdit(self.groupEmittance)
-        self.lineYemittance.setObjectName(u"lineYemittance")
-        sizePolicy1.setHeightForWidth(self.lineYemittance.sizePolicy().hasHeightForWidth())
-        self.lineYemittance.setSizePolicy(sizePolicy1)
-        self.lineYemittance.setMaximumSize(QSize(100, 16777215))
-        self.lineYemittance.setFont(font1)
-        self.lineYemittance.setReadOnly(True)
+        self.labelEmittanceX = QLabel(self.groupEmittance)
+        self.labelEmittanceX.setObjectName(u"labelEmittanceX")
+        self.labelEmittanceX.setMaximumSize(QSize(10, 16777215))
+        self.labelEmittanceX.setFont(font1)
 
-        self.gridEmittance.addWidget(self.lineYemittance, 1, 1, 1, 1)
+        self.gridEmittance.addWidget(self.labelEmittanceX, 0, 0, 1, 1)
 
-        self.lineXemittance = QLineEdit(self.groupEmittance)
-        self.lineXemittance.setObjectName(u"lineXemittance")
-        sizePolicy1.setHeightForWidth(self.lineXemittance.sizePolicy().hasHeightForWidth())
-        self.lineXemittance.setSizePolicy(sizePolicy1)
-        self.lineXemittance.setMaximumSize(QSize(100, 16777215))
-        self.lineXemittance.setFont(font1)
-        self.lineXemittance.setReadOnly(True)
+        self.lineEmittanceX = QLineEdit(self.groupEmittance)
+        self.lineEmittanceX.setObjectName(u"lineEmittanceX")
+        sizePolicy1.setHeightForWidth(self.lineEmittanceX.sizePolicy().hasHeightForWidth())
+        self.lineEmittanceX.setSizePolicy(sizePolicy1)
+        self.lineEmittanceX.setMaximumSize(QSize(100, 16777215))
+        self.lineEmittanceX.setFont(font1)
+        self.lineEmittanceX.setReadOnly(True)
 
-        self.gridEmittance.addWidget(self.lineXemittance, 0, 1, 1, 1)
+        self.gridEmittance.addWidget(self.lineEmittanceX, 0, 1, 1, 1)
+
+        self.labelEmittanceY = QLabel(self.groupEmittance)
+        self.labelEmittanceY.setObjectName(u"labelEmittanceY")
+        self.labelEmittanceY.setMaximumSize(QSize(10, 16777215))
+        self.labelEmittanceY.setFont(font1)
+
+        self.gridEmittance.addWidget(self.labelEmittanceY, 1, 0, 1, 1)
+
+        self.horiFieldGradient = QHBoxLayout()
+        self.horiFieldGradient.setObjectName(u"horiFieldGradient")
+        self.labelFieldGradient = QLabel(self.groupEmittance)
+        self.labelFieldGradient.setObjectName(u"labelFieldGradient")
+        self.labelFieldGradient.setMaximumSize(QSize(205, 16777215))
+        self.labelFieldGradient.setFont(font1)
+
+        self.horiFieldGradient.addWidget(self.labelFieldGradient)
+
+        self.lineFieldGradient = QLineEdit(self.groupEmittance)
+        self.lineFieldGradient.setObjectName(u"lineFieldGradient")
+        sizePolicy1.setHeightForWidth(self.lineFieldGradient.sizePolicy().hasHeightForWidth())
+        self.lineFieldGradient.setSizePolicy(sizePolicy1)
+        self.lineFieldGradient.setMinimumSize(QSize(100, 0))
+        self.lineFieldGradient.setMaximumSize(QSize(100, 16777215))
+        self.lineFieldGradient.setFont(font1)
+
+        self.horiFieldGradient.addWidget(self.lineFieldGradient)
+
+        self.labelFGTip = QLabel(self.groupEmittance)
+        self.labelFGTip.setObjectName(u"labelFGTip")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.labelFGTip.sizePolicy().hasHeightForWidth())
+        self.labelFGTip.setSizePolicy(sizePolicy3)
+        self.labelFGTip.setMaximumSize(QSize(175, 16777215))
+        self.labelFGTip.setFont(font1)
+
+        self.horiFieldGradient.addWidget(self.labelFGTip)
+
+        self.labelFGBlank = QLabel(self.groupEmittance)
+        self.labelFGBlank.setObjectName(u"labelFGBlank")
+
+        self.horiFieldGradient.addWidget(self.labelFGBlank)
+
+
+        self.gridEmittance.addLayout(self.horiFieldGradient, 3, 0, 2, 4)
 
 
         self.gridLayout_3.addWidget(self.groupEmittance, 4, 0, 1, 1)
@@ -237,11 +276,6 @@ class Ui_MainWindow(object):
         self.pushCalibration.setFont(font1)
 
         self.gridProfile_2.addWidget(self.pushCalibration, 0, 0, 1, 1)
-
-        self.listProfiles = QListWidget(self.groupProfile)
-        self.listProfiles.setObjectName(u"listProfiles")
-
-        self.gridProfile_2.addWidget(self.listProfiles, 2, 0, 1, 4)
 
         self.pushFilter = QPushButton(self.groupProfile)
         self.pushFilter.setObjectName(u"pushFilter")
@@ -264,37 +298,41 @@ class Ui_MainWindow(object):
 
         self.gridProfile_2.addWidget(self.pushExportProfiles, 0, 3, 1, 1)
 
+        self.tableProfiles = QTableWidget(self.groupProfile)
+        if (self.tableProfiles.columnCount() < 4):
+            self.tableProfiles.setColumnCount(4)
+        __qtablewidgetitem = QTableWidgetItem()
+        __qtablewidgetitem.setFont(font1)
+        self.tableProfiles.setHorizontalHeaderItem(0, __qtablewidgetitem)
+        __qtablewidgetitem1 = QTableWidgetItem()
+        __qtablewidgetitem1.setFont(font1)
+        self.tableProfiles.setHorizontalHeaderItem(1, __qtablewidgetitem1)
+        __qtablewidgetitem2 = QTableWidgetItem()
+        __qtablewidgetitem2.setFont(font1)
+        self.tableProfiles.setHorizontalHeaderItem(2, __qtablewidgetitem2)
+        __qtablewidgetitem3 = QTableWidgetItem()
+        __qtablewidgetitem3.setFont(font1)
+        self.tableProfiles.setHorizontalHeaderItem(3, __qtablewidgetitem3)
+        self.tableProfiles.setObjectName(u"tableProfiles")
+        self.tableProfiles.setFont(font1)
+        self.tableProfiles.horizontalHeader().setCascadingSectionResizes(False)
+        self.tableProfiles.horizontalHeader().setStretchLastSection(True)
+
+        self.gridProfile_2.addWidget(self.tableProfiles, 2, 0, 1, 4)
+
 
         self.gridLayout_3.addWidget(self.groupProfile, 5, 0, 1, 1)
 
         self.groupCamera = QGroupBox(self.frameControl)
         self.groupCamera.setObjectName(u"groupCamera")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.groupCamera.sizePolicy().hasHeightForWidth())
-        self.groupCamera.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.groupCamera.sizePolicy().hasHeightForWidth())
+        self.groupCamera.setSizePolicy(sizePolicy4)
         self.groupCamera.setFont(font)
         self.gridCamera = QGridLayout(self.groupCamera)
         self.gridCamera.setObjectName(u"gridCamera")
-        self.labelGain = QLabel(self.groupCamera)
-        self.labelGain.setObjectName(u"labelGain")
-        self.labelGain.setFont(font1)
-
-        self.gridCamera.addWidget(self.labelGain, 0, 0, 1, 1)
-
-        self.labelGainRange = QLabel(self.groupCamera)
-        self.labelGainRange.setObjectName(u"labelGainRange")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.labelGainRange.sizePolicy().hasHeightForWidth())
-        self.labelGainRange.setSizePolicy(sizePolicy4)
-        self.labelGainRange.setMaximumSize(QSize(100, 16777215))
-        self.labelGainRange.setFont(font1)
-
-        self.gridCamera.addWidget(self.labelGainRange, 0, 4, 1, 1)
-
         self.lineGain = QLineEdit(self.groupCamera)
         self.lineGain.setObjectName(u"lineGain")
         self.lineGain.setEnabled(True)
@@ -309,27 +347,15 @@ class Ui_MainWindow(object):
 
         self.gridCamera.addWidget(self.lineGain, 0, 1, 1, 1)
 
-        self.lineFrameRate = QLineEdit(self.groupCamera)
-        self.lineFrameRate.setObjectName(u"lineFrameRate")
-        sizePolicy1.setHeightForWidth(self.lineFrameRate.sizePolicy().hasHeightForWidth())
-        self.lineFrameRate.setSizePolicy(sizePolicy1)
-        self.lineFrameRate.setMaximumSize(QSize(50, 16777215))
-        self.lineFrameRate.setFont(font1)
-        self.lineFrameRate.setReadOnly(True)
+        self.lineExposureTime = QLineEdit(self.groupCamera)
+        self.lineExposureTime.setObjectName(u"lineExposureTime")
+        sizePolicy5.setHeightForWidth(self.lineExposureTime.sizePolicy().hasHeightForWidth())
+        self.lineExposureTime.setSizePolicy(sizePolicy5)
+        self.lineExposureTime.setMaximumSize(QSize(50, 16777215))
+        self.lineExposureTime.setFont(font1)
+        self.lineExposureTime.setReadOnly(True)
 
-        self.gridCamera.addWidget(self.lineFrameRate, 1, 1, 1, 1)
-
-        self.labelFrameRange = QLabel(self.groupCamera)
-        self.labelFrameRange.setObjectName(u"labelFrameRange")
-        self.labelFrameRange.setFont(font1)
-
-        self.gridCamera.addWidget(self.labelFrameRange, 1, 4, 1, 1)
-
-        self.labelExposureTimeRange = QLabel(self.groupCamera)
-        self.labelExposureTimeRange.setObjectName(u"labelExposureTimeRange")
-        self.labelExposureTimeRange.setFont(font1)
-
-        self.gridCamera.addWidget(self.labelExposureTimeRange, 2, 4, 1, 1)
+        self.gridCamera.addWidget(self.lineExposureTime, 2, 1, 1, 1)
 
         self.gridRotation = QGridLayout()
         self.gridRotation.setObjectName(u"gridRotation")
@@ -391,21 +417,52 @@ class Ui_MainWindow(object):
 
         self.gridCamera.addLayout(self.gridRotation, 7, 0, 1, 2)
 
-        self.labelExposureTime = QLabel(self.groupCamera)
-        self.labelExposureTime.setObjectName(u"labelExposureTime")
-        self.labelExposureTime.setFont(font1)
+        self.sliderFrameRate = QSlider(self.groupCamera)
+        self.sliderFrameRate.setObjectName(u"sliderFrameRate")
+        sizePolicy1.setHeightForWidth(self.sliderFrameRate.sizePolicy().hasHeightForWidth())
+        self.sliderFrameRate.setSizePolicy(sizePolicy1)
+        self.sliderFrameRate.setMinimum(1)
+        self.sliderFrameRate.setMaximum(30)
+        self.sliderFrameRate.setValue(30)
+        self.sliderFrameRate.setOrientation(Qt.Horizontal)
 
-        self.gridCamera.addWidget(self.labelExposureTime, 2, 0, 1, 1)
+        self.gridCamera.addWidget(self.sliderFrameRate, 1, 2, 1, 2)
 
-        self.sliderGain = QSlider(self.groupCamera)
-        self.sliderGain.setObjectName(u"sliderGain")
-        sizePolicy1.setHeightForWidth(self.sliderGain.sizePolicy().hasHeightForWidth())
-        self.sliderGain.setSizePolicy(sizePolicy1)
-        self.sliderGain.setMaximum(100)
-        self.sliderGain.setValue(100)
-        self.sliderGain.setOrientation(Qt.Horizontal)
+        self.sliderRepeat = QSlider(self.groupCamera)
+        self.sliderRepeat.setObjectName(u"sliderRepeat")
+        sizePolicy1.setHeightForWidth(self.sliderRepeat.sizePolicy().hasHeightForWidth())
+        self.sliderRepeat.setSizePolicy(sizePolicy1)
+        self.sliderRepeat.setMinimum(1)
+        self.sliderRepeat.setMaximum(30)
+        self.sliderRepeat.setOrientation(Qt.Horizontal)
 
-        self.gridCamera.addWidget(self.sliderGain, 0, 2, 1, 2)
+        self.gridCamera.addWidget(self.sliderRepeat, 3, 2, 1, 2)
+
+        self.labelExposureTimeRange = QLabel(self.groupCamera)
+        self.labelExposureTimeRange.setObjectName(u"labelExposureTimeRange")
+        self.labelExposureTimeRange.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelExposureTimeRange, 2, 4, 1, 1)
+
+        self.lineRepeat = QLineEdit(self.groupCamera)
+        self.lineRepeat.setObjectName(u"lineRepeat")
+        sizePolicy1.setHeightForWidth(self.lineRepeat.sizePolicy().hasHeightForWidth())
+        self.lineRepeat.setSizePolicy(sizePolicy1)
+        self.lineRepeat.setMaximumSize(QSize(50, 16777215))
+        self.lineRepeat.setFont(font1)
+        self.lineRepeat.setReadOnly(True)
+
+        self.gridCamera.addWidget(self.lineRepeat, 3, 1, 1, 1)
+
+        self.lineFrameRate = QLineEdit(self.groupCamera)
+        self.lineFrameRate.setObjectName(u"lineFrameRate")
+        sizePolicy1.setHeightForWidth(self.lineFrameRate.sizePolicy().hasHeightForWidth())
+        self.lineFrameRate.setSizePolicy(sizePolicy1)
+        self.lineFrameRate.setMaximumSize(QSize(50, 16777215))
+        self.lineFrameRate.setFont(font1)
+        self.lineFrameRate.setReadOnly(True)
+
+        self.gridCamera.addWidget(self.lineFrameRate, 1, 1, 1, 1)
 
         self.sliderExposureTime = QSlider(self.groupCamera)
         self.sliderExposureTime.setObjectName(u"sliderExposureTime")
@@ -418,15 +475,41 @@ class Ui_MainWindow(object):
 
         self.gridCamera.addWidget(self.sliderExposureTime, 2, 2, 1, 2)
 
-        self.lineExposureTime = QLineEdit(self.groupCamera)
-        self.lineExposureTime.setObjectName(u"lineExposureTime")
-        sizePolicy5.setHeightForWidth(self.lineExposureTime.sizePolicy().hasHeightForWidth())
-        self.lineExposureTime.setSizePolicy(sizePolicy5)
-        self.lineExposureTime.setMaximumSize(QSize(50, 16777215))
-        self.lineExposureTime.setFont(font1)
-        self.lineExposureTime.setReadOnly(True)
+        self.labelFrameRate = QLabel(self.groupCamera)
+        self.labelFrameRate.setObjectName(u"labelFrameRate")
+        self.labelFrameRate.setFont(font1)
 
-        self.gridCamera.addWidget(self.lineExposureTime, 2, 1, 1, 1)
+        self.gridCamera.addWidget(self.labelFrameRate, 1, 0, 1, 1)
+
+        self.labelFrameRange = QLabel(self.groupCamera)
+        self.labelFrameRange.setObjectName(u"labelFrameRange")
+        self.labelFrameRange.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelFrameRange, 1, 4, 1, 1)
+
+        self.labelRepeat = QLabel(self.groupCamera)
+        self.labelRepeat.setObjectName(u"labelRepeat")
+        self.labelRepeat.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelRepeat, 3, 0, 1, 1)
+
+        self.labelRepeatRange = QLabel(self.groupCamera)
+        self.labelRepeatRange.setObjectName(u"labelRepeatRange")
+        self.labelRepeatRange.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelRepeatRange, 3, 4, 1, 1)
+
+        self.labelExposureTime = QLabel(self.groupCamera)
+        self.labelExposureTime.setObjectName(u"labelExposureTime")
+        self.labelExposureTime.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelExposureTime, 2, 0, 1, 1)
+
+        self.labelGain = QLabel(self.groupCamera)
+        self.labelGain.setObjectName(u"labelGain")
+        self.labelGain.setFont(font1)
+
+        self.gridCamera.addWidget(self.labelGain, 0, 0, 1, 1)
 
         self.gridInterest = QGridLayout()
         self.gridInterest.setObjectName(u"gridInterest")
@@ -536,60 +619,30 @@ class Ui_MainWindow(object):
 
         self.gridCamera.addLayout(self.gridInterest, 6, 0, 1, 5)
 
-        self.sliderFrameRate = QSlider(self.groupCamera)
-        self.sliderFrameRate.setObjectName(u"sliderFrameRate")
-        sizePolicy1.setHeightForWidth(self.sliderFrameRate.sizePolicy().hasHeightForWidth())
-        self.sliderFrameRate.setSizePolicy(sizePolicy1)
-        self.sliderFrameRate.setMinimum(1)
-        self.sliderFrameRate.setMaximum(30)
-        self.sliderFrameRate.setValue(30)
-        self.sliderFrameRate.setOrientation(Qt.Horizontal)
-
-        self.gridCamera.addWidget(self.sliderFrameRate, 1, 2, 1, 2)
-
         self.labelInterest = QLabel(self.groupCamera)
         self.labelInterest.setObjectName(u"labelInterest")
         self.labelInterest.setFont(font3)
 
         self.gridCamera.addWidget(self.labelInterest, 4, 0, 1, 1)
 
-        self.labelFrameRate = QLabel(self.groupCamera)
-        self.labelFrameRate.setObjectName(u"labelFrameRate")
-        self.labelFrameRate.setFont(font1)
+        self.sliderGain = QSlider(self.groupCamera)
+        self.sliderGain.setObjectName(u"sliderGain")
+        sizePolicy1.setHeightForWidth(self.sliderGain.sizePolicy().hasHeightForWidth())
+        self.sliderGain.setSizePolicy(sizePolicy1)
+        self.sliderGain.setMaximum(100)
+        self.sliderGain.setValue(100)
+        self.sliderGain.setOrientation(Qt.Horizontal)
 
-        self.gridCamera.addWidget(self.labelFrameRate, 1, 0, 1, 1)
+        self.gridCamera.addWidget(self.sliderGain, 0, 2, 1, 2)
 
-        self.labelRepeat = QLabel(self.groupCamera)
-        self.labelRepeat.setObjectName(u"labelRepeat")
-        self.labelRepeat.setFont(font1)
+        self.labelGainRange = QLabel(self.groupCamera)
+        self.labelGainRange.setObjectName(u"labelGainRange")
+        sizePolicy3.setHeightForWidth(self.labelGainRange.sizePolicy().hasHeightForWidth())
+        self.labelGainRange.setSizePolicy(sizePolicy3)
+        self.labelGainRange.setMaximumSize(QSize(100, 16777215))
+        self.labelGainRange.setFont(font1)
 
-        self.gridCamera.addWidget(self.labelRepeat, 3, 0, 1, 1)
-
-        self.lineRepeat = QLineEdit(self.groupCamera)
-        self.lineRepeat.setObjectName(u"lineRepeat")
-        sizePolicy1.setHeightForWidth(self.lineRepeat.sizePolicy().hasHeightForWidth())
-        self.lineRepeat.setSizePolicy(sizePolicy1)
-        self.lineRepeat.setMaximumSize(QSize(50, 16777215))
-        self.lineRepeat.setFont(font1)
-        self.lineRepeat.setReadOnly(True)
-
-        self.gridCamera.addWidget(self.lineRepeat, 3, 1, 1, 1)
-
-        self.labelRepeatRange = QLabel(self.groupCamera)
-        self.labelRepeatRange.setObjectName(u"labelRepeatRange")
-        self.labelRepeatRange.setFont(font1)
-
-        self.gridCamera.addWidget(self.labelRepeatRange, 3, 4, 1, 1)
-
-        self.sliderRepeat = QSlider(self.groupCamera)
-        self.sliderRepeat.setObjectName(u"sliderRepeat")
-        sizePolicy1.setHeightForWidth(self.sliderRepeat.sizePolicy().hasHeightForWidth())
-        self.sliderRepeat.setSizePolicy(sizePolicy1)
-        self.sliderRepeat.setMinimum(1)
-        self.sliderRepeat.setMaximum(30)
-        self.sliderRepeat.setOrientation(Qt.Horizontal)
-
-        self.gridCamera.addWidget(self.sliderRepeat, 3, 2, 1, 2)
+        self.gridCamera.addWidget(self.labelGainRange, 0, 4, 1, 1)
 
 
         self.gridLayout_3.addWidget(self.groupCamera, 2, 0, 1, 1)
@@ -602,8 +655,8 @@ class Ui_MainWindow(object):
         self.gridScreenControl.setContentsMargins(6, 6, 6, 6)
         self.sliderScreenSpace = QSlider(self.groupScreen)
         self.sliderScreenSpace.setObjectName(u"sliderScreenSpace")
-        sizePolicy4.setHeightForWidth(self.sliderScreenSpace.sizePolicy().hasHeightForWidth())
-        self.sliderScreenSpace.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.sliderScreenSpace.sizePolicy().hasHeightForWidth())
+        self.sliderScreenSpace.setSizePolicy(sizePolicy3)
         self.sliderScreenSpace.setMinimum(1)
         self.sliderScreenSpace.setMaximum(3)
         self.sliderScreenSpace.setOrientation(Qt.Horizontal)
@@ -717,8 +770,8 @@ class Ui_MainWindow(object):
         self.gridViewer.setObjectName(u"gridViewer")
         self.wProfile = QFrame(self.frameViewer)
         self.wProfile.setObjectName(u"wProfile")
-        sizePolicy4.setHeightForWidth(self.wProfile.sizePolicy().hasHeightForWidth())
-        self.wProfile.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.wProfile.sizePolicy().hasHeightForWidth())
+        self.wProfile.setSizePolicy(sizePolicy3)
         self.wProfile.setMaximumSize(QSize(16777215, 16777215))
         self.wProfile.setFrameShape(QFrame.StyledPanel)
         self.wProfile.setFrameShadow(QFrame.Plain)
@@ -731,8 +784,8 @@ class Ui_MainWindow(object):
 
         self.wViewer = QFrame(self.frameViewer)
         self.wViewer.setObjectName(u"wViewer")
-        sizePolicy4.setHeightForWidth(self.wViewer.sizePolicy().hasHeightForWidth())
-        self.wViewer.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.wViewer.sizePolicy().hasHeightForWidth())
+        self.wViewer.setSizePolicy(sizePolicy3)
         self.wViewer.setMinimumSize(QSize(576, 529))
         self.wViewer.setFrameShape(QFrame.StyledPanel)
         self.gridScreen = QGridLayout(self.wViewer)
@@ -741,8 +794,8 @@ class Ui_MainWindow(object):
         self.gridScreen.setContentsMargins(0, 0, 0, 0)
         self.labelViewer = QLabel(self.wViewer)
         self.labelViewer.setObjectName(u"labelViewer")
-        sizePolicy4.setHeightForWidth(self.labelViewer.sizePolicy().hasHeightForWidth())
-        self.labelViewer.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.labelViewer.sizePolicy().hasHeightForWidth())
+        self.labelViewer.setSizePolicy(sizePolicy3)
 
         self.gridScreen.addWidget(self.labelViewer, 0, 0, 1, 1)
 
@@ -751,8 +804,8 @@ class Ui_MainWindow(object):
 
         self.wBeamSizeX = QFrame(self.frameViewer)
         self.wBeamSizeX.setObjectName(u"wBeamSizeX")
-        sizePolicy4.setHeightForWidth(self.wBeamSizeX.sizePolicy().hasHeightForWidth())
-        self.wBeamSizeX.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.wBeamSizeX.sizePolicy().hasHeightForWidth())
+        self.wBeamSizeX.setSizePolicy(sizePolicy3)
         self.wBeamSizeX.setMaximumSize(QSize(16777215, 16777215))
         self.wBeamSizeX.setFrameShape(QFrame.StyledPanel)
         self.gridBeamSizeX = QGridLayout(self.wBeamSizeX)
@@ -764,8 +817,8 @@ class Ui_MainWindow(object):
 
         self.wBeamSizeY = QFrame(self.frameViewer)
         self.wBeamSizeY.setObjectName(u"wBeamSizeY")
-        sizePolicy4.setHeightForWidth(self.wBeamSizeY.sizePolicy().hasHeightForWidth())
-        self.wBeamSizeY.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.wBeamSizeY.sizePolicy().hasHeightForWidth())
+        self.wBeamSizeY.setSizePolicy(sizePolicy3)
         self.wBeamSizeY.setMaximumSize(QSize(16777215, 16777215))
         self.wBeamSizeY.setFrameShape(QFrame.StyledPanel)
         self.wBeamSizeY.setFrameShadow(QFrame.Plain)
@@ -816,9 +869,8 @@ class Ui_MainWindow(object):
         self.actionSave.setText(QCoreApplication.translate("MainWindow", u"Save", None))
         self.actionExit.setText(QCoreApplication.translate("MainWindow", u"Exit", None))
         self.groupEmittance.setTitle(QCoreApplication.translate("MainWindow", u"Emittance", None))
-        self.labelYemittance.setText(QCoreApplication.translate("MainWindow", u"y", None))
-        self.labelXemittanceUnit.setText(QCoreApplication.translate("MainWindow", u"mrad mm", None))
-        self.pushCalculate.setText(QCoreApplication.translate("MainWindow", u"Calculate", None))
+        self.labelEmittanceUnitY.setText(QCoreApplication.translate("MainWindow", u"mrad mm", None))
+        self.labelEmittanceUnitX.setText(QCoreApplication.translate("MainWindow", u"mrad mm", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"y", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"x", None))
         self.lineGammaY.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
@@ -830,29 +882,45 @@ class Ui_MainWindow(object):
         self.lineGammaX.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
         self.labelAlpha.setText(QCoreApplication.translate("MainWindow", u"Alpha", None))
         self.lineBetaY.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
-        self.labelYemittanceUnit.setText(QCoreApplication.translate("MainWindow", u"mrad mm", None))
-        self.labelXemittance.setText(QCoreApplication.translate("MainWindow", u"x", None))
-        self.lineYemittance.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
-        self.lineXemittance.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
+        self.pushCalculate.setText(QCoreApplication.translate("MainWindow", u"Calculate", None))
+        self.lineEmittanceY.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
+        self.labelEmittanceX.setText(QCoreApplication.translate("MainWindow", u"x", None))
+        self.lineEmittanceX.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
+        self.labelEmittanceY.setText(QCoreApplication.translate("MainWindow", u"y", None))
+        self.labelFieldGradient.setText(QCoreApplication.translate("MainWindow", u"Quadrupole field gradient (T/m)", None))
+        self.lineFieldGradient.setText(QCoreApplication.translate("MainWindow", u"0.0", None))
+        self.labelFGTip.setText(QCoreApplication.translate("MainWindow", u"(Only for quadrupole scan)", None))
+        self.labelFGBlank.setText("")
         self.groupProfile.setTitle(QCoreApplication.translate("MainWindow", u"Profile", None))
         self.pushCalibration.setText(QCoreApplication.translate("MainWindow", u"Callibration", None))
         self.pushFilter.setText(QCoreApplication.translate("MainWindow", u"Filter", None))
         self.labelSaveImages.setText("")
         self.pushExportProfiles.setText(QCoreApplication.translate("MainWindow", u"Export", None))
+        ___qtablewidgetitem = self.tableProfiles.horizontalHeaderItem(0)
+        ___qtablewidgetitem.setText(QCoreApplication.translate("MainWindow", u"Gradient", None));
+        ___qtablewidgetitem1 = self.tableProfiles.horizontalHeaderItem(1)
+        ___qtablewidgetitem1.setText(QCoreApplication.translate("MainWindow", u"Beam Size(x)", None));
+        ___qtablewidgetitem2 = self.tableProfiles.horizontalHeaderItem(2)
+        ___qtablewidgetitem2.setText(QCoreApplication.translate("MainWindow", u"Beam Size(y)", None));
+        ___qtablewidgetitem3 = self.tableProfiles.horizontalHeaderItem(3)
+        ___qtablewidgetitem3.setText(QCoreApplication.translate("MainWindow", u"Image", None));
         self.groupCamera.setTitle(QCoreApplication.translate("MainWindow", u"Camera", None))
-        self.labelGain.setText(QCoreApplication.translate("MainWindow", u"Gain (%)", None))
-        self.labelGainRange.setText(QCoreApplication.translate("MainWindow", u"(0 - 100)", None))
         self.lineGain.setText(QCoreApplication.translate("MainWindow", u"100", None))
-        self.lineFrameRate.setText(QCoreApplication.translate("MainWindow", u"30", None))
-        self.labelFrameRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
-        self.labelExposureTimeRange.setText(QCoreApplication.translate("MainWindow", u"(1- 1000)", None))
+        self.lineExposureTime.setText(QCoreApplication.translate("MainWindow", u"500", None))
         self.pushRotateRight.setText("")
         self.pushFilpRightLeft.setText("")
         self.pushFlipUpDown.setText("")
         self.pushRotateLeft.setText("")
         self.labelRotation.setText(QCoreApplication.translate("MainWindow", u"Rotation", None))
+        self.labelExposureTimeRange.setText(QCoreApplication.translate("MainWindow", u"(1- 1000)", None))
+        self.lineRepeat.setText(QCoreApplication.translate("MainWindow", u"1", None))
+        self.lineFrameRate.setText(QCoreApplication.translate("MainWindow", u"30", None))
+        self.labelFrameRate.setText(QCoreApplication.translate("MainWindow", u"Frame Rate (FPS)", None))
+        self.labelFrameRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
+        self.labelRepeat.setText(QCoreApplication.translate("MainWindow", u"Repeat", None))
+        self.labelRepeatRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
         self.labelExposureTime.setText(QCoreApplication.translate("MainWindow", u"Exposure Time (ms)", None))
-        self.lineExposureTime.setText(QCoreApplication.translate("MainWindow", u"500", None))
+        self.labelGain.setText(QCoreApplication.translate("MainWindow", u"Gain (%)", None))
         self.lineDX.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.lineDY.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.lineY0.setText(QCoreApplication.translate("MainWindow", u"0", None))
@@ -862,10 +930,7 @@ class Ui_MainWindow(object):
         self.labelX0.setText(QCoreApplication.translate("MainWindow", u"x0", None))
         self.labelDX.setText(QCoreApplication.translate("MainWindow", u"dx", None))
         self.labelInterest.setText(QCoreApplication.translate("MainWindow", u"Region of Interest", None))
-        self.labelFrameRate.setText(QCoreApplication.translate("MainWindow", u"Frame Rate (FPS)", None))
-        self.labelRepeat.setText(QCoreApplication.translate("MainWindow", u"Repeat", None))
-        self.lineRepeat.setText(QCoreApplication.translate("MainWindow", u"1", None))
-        self.labelRepeatRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
+        self.labelGainRange.setText(QCoreApplication.translate("MainWindow", u"(0 - 100)", None))
         self.groupScreen.setTitle(QCoreApplication.translate("MainWindow", u"Screen", None))
         self.lineScreenSpace.setText(QCoreApplication.translate("MainWindow", u"1", None))
         self.labelScreenUnit.setText(QCoreApplication.translate("MainWindow", u"cm", None))
