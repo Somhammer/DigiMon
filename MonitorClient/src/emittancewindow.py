@@ -196,16 +196,16 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             ybeam_squared = []
             for irow in range(self.tableProfiles.rowCount()):
                 if not self.tableProfiles.cellWidget(irow, 0).isChecked(): continue
-                gradients.append(float(self.tableProfiles.item(irow, 1).text()))
+                gradient.append(float(self.tableProfiles.item(irow, 1).text()))
                 xbeam_size.append(float(self.tableProfiles.item(irow, 2).text()))
                 ybeam_size.append(float(self.tableProfiles.item(irow, 3).text()))
             self.gradient = gradient
             self.xbeam_size = xbeam_size
             self.ybeam_size = ybeam_size
 
-            self.plotSize.plot(gradient, xbeam_size, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
-            self.plotXbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.xbeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
-            self.plotYbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.ybeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
+            self.plotSize.plot(gradient, xbeam_size, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
+            self.plotXbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.xbeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
+            self.plotYbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.ybeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
         else:
             return
 
@@ -357,7 +357,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
         if reply == QMessageBox.Yes:
             self.reject()
         else:
-            self.ignore()
+            return
 
     def return_para(self):
         return super().exec_()

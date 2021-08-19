@@ -121,6 +121,9 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.labelImage.resize(width, height)
         self.labelImage.setPixmap(pixmap)
 
+    def closeEvent(self, event):
+        self.click_cancel()
+
     def click_ok(self):
         self.logger_signal.emit('INFO', str(f"Apply {self.comboFilter.currentText()} Filter"))
         self.accept()
@@ -130,7 +133,7 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         if reply == QMessageBox.Yes:
             self.reject()
         else:
-            self.ignore()
+            return
     
     def return_para(self):
         return super().exec_()

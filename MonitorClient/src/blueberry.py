@@ -39,8 +39,9 @@ class Blueberry(QThread):
         self.filter_code = None
         self.filter_para = {}
 
-        self.transform_points = []
-        self.pixel_to_mm = 1.0/float(20.0)
+        self.do_transformation = False
+        self.destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
+        self.mm_per_pixel = [1.0, 1.0]
 
         self.working = True
 
@@ -179,6 +180,21 @@ class Blueberry(QThread):
         
         return filtered_image
 
+    def transform_image(self, image):
+        if self.do_transformation:
+            width = self.destination_points[2][0] - self.destination_points[0][0]
+            height = self.destination_points[1][1] - self.destination_points[0][1]
+            destination_points = [(0,0),(0,height),(width,0),(width,height)]
+            transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), np.float32(destination_points))
+
+            # 단순 perspective transformation은 왜곡이 발생함. -> 실험으로 확인
+            #destination_points = [(0,0), ()]
+            transformed_image = cv2.warpPerspective(image, transform_matrix, (int(width), int(height)))
+        else:
+            transformed_image = image
+        
+        return transformed_image
+
     def show_screen(self):
         if not self.connected: return
         if not self.working: return
@@ -208,15 +224,20 @@ class Blueberry(QThread):
         image = self.filter_image(image)
         height, width, channel = image.shape
         # 좌표: 좌상, 좌하, 우상, 우하
-        destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
-        transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), destination_points)
-        transformed_image = cv2.warpPerspective(image, transform_matrix, (800, 800))
+        #destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
+        #transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), destination_points)
+        #transformed_image = cv2.warpPerspective(image, transform_matrix, (800, 800))
+
+        transformed_image = self.transform_image(image)
         
         transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
 
         nxpixel, nypixel = transformed_image.shape
-        xbin = [-20 + float(i) * self.pixel_to_mm for i in range(nxpixel)]
-        ybin = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)]
+        print(self.mm_per_pixel)
+        xbin = [0 - float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))] + [0 + float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))]
+        xbin.sort()
+        ybin = [0 - float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))] + [0 + float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))]
+        ybin.sort()
 
         #xbin_for_filling = []
         #for j in range(nypixel):
@@ -257,8 +278,8 @@ class Blueberry(QThread):
             yfitline = None
         
         xmax, ymax = np.argmax(xhist), np.argmax(yhist)
-        xlength = len(np.where(xhist_percent > 32)[0]) * self.pixel_to_mm
-        ylength = len(np.where(yhist_percent > 32)[0]) * self.pixel_to_mm
+        xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
+        ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]
         
         self.graph_signal.emit(PROFILE_SCREEN, transformed_image, [xbin[xmax], ybin[ymax], xlength, ylength])
         self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)

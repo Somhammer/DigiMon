@@ -27,6 +27,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
 
+        self.main_size = [self.width(), self.height()]
+        self.image_size = [self.wViewer.width(), self.wViewer.height()]
+        self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
+        self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
+        self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
+
         self.__password = "NCCproton"
         self.blackberry = Blackberry()
         self.blueberry = Blueberry(parent=self)
@@ -127,7 +133,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         calibration = CalibrationWindow()
         r = calibration.return_para()
         if r:
+            self.blueberry.do_transformation = True
             self.blueberry.transform_points = calibration.original_points
+            self.blueberry.destination_points = calibration.destination_points
+            self.blueberry.mm_per_pixel = calibration.mm_per_pixel
 
     def filter_image(self):
         #filtering = FilterWindow(self, self.original_images[-1])
@@ -170,11 +179,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.blackberry.send_command('quit')
 
     def resizeEvent(self, event):
+        self.previous_size = [self.main_size[0], self.main_size[1]]
+        ratio = [self.width()/self.previous_size[0], self.height()/self.prefivous_size[1]]
+
+        if self.labelViewer is not None:
+            self.labelViewer.resize(self.image_size[0]*ratio, self.image_size[1]*ratio)
+        if self.profile is not None:
+            self.profile.resize(self.plot_profile_size[0]*ratio, self.plot_profile_size[1]*ratio)
+        if self.beamx is not None:
+            self.beamx.resize(self.plot_beamx_size[0]*ratio, self.plot_beamx_size[1]*ratio)
+        if self.beamy is not None:
+            self.beamy.resize(self.plot_beamy_size[0]*ratio, self.plot_beamy_size[1]*ratio)
+
+        self.main_size = [self.width(), self.height()]
         self.image_size = [self.wViewer.width(), self.wViewer.height()]
         self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
         self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
         self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
 
+        """
         if self.labelViewer is not None:
             self.labelViewer.resize(self.image_size[0], self.image_size[1])
         if self.profile is not None:
@@ -183,6 +206,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.beamx.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
         if self.beamy is not None:
             self.beamy.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
+        """
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to quit?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -232,8 +256,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             #image.setImage(graphics)
             image.setLookupTable(look_up_table)
             image.setImage(np.array(graphics))
-            scale = self.blueberry.pixel_to_mm
-            image.setTransform(QTransform().scale(scale, scale).translate(-400,-400))
+            scale_x = self.blueberry.mm_per_pixel[0]
+            scale_y = self.blueberry.mm_per_pixel[1]
+            image.setTransform(QTransform().scale(scale_x, scale_y).translate(-400,-400))
             #image.setTransform(QTransform().translate(-40, -40))
 
             if self.profile is not None:
