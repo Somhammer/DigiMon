@@ -17,14 +17,17 @@ import pyqtgraph as pg
 from src.logger import LogStringHandler
 from src.variables import *
 
+#from src.android import Camera
+#from src.alliedvision import Camera
+from src.testcamera import Camera
+
 class Blueberry(QThread):
     thread_signal = Signal(str, list)
     thread_logger_signal = Signal(str, str)
-    screen_signal = Signal(int, QPixmap)
+    screen_signal = Signal(int, np.ndarray)
     graph_signal = Signal(int, list, list)
     save_signal = Signal(str)
 
-    #chart_signal = Signal(QChart)
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
@@ -33,8 +36,12 @@ class Blueberry(QThread):
 
         self.url = "http://192.168.3.25:8080/shot.jpg"
 
+        self.camera = Camera()
+
         self.image = None
         self.last_picture = None
+
+        self.save_filtered_image = False
 
         self.filter_code = None
         self.filter_para = {}
@@ -50,9 +57,11 @@ class Blueberry(QThread):
         self.frame = None
         self.exposure_time = None
         self.repeat = None
-
-        self.previous = 1
-        self.set_action()
+        
+        self.thread_logger_signal.connect(self.parent.receive_log)
+        self.screen_signal.connect(self.parent.update_screen)
+        self.graph_signal.connect(self.parent.update_screen)
+        self.save_signal.connect(self.parent.save_image)
 
     def initialize(self):
         self.outdir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'output', datetime.datetime.today().strftime('%y%m%d'))
@@ -64,85 +73,37 @@ class Blueberry(QThread):
             os.makedirs(os.path.join(self.outdir, 'profile'))
         if not os.path.exists(os.path.join(self.outdir, 'emittance')):
             os.makedirs(os.path.join(self.outdir, 'emittance'))
-        """
-        try:
-            self.camera = cv2.VideoCapture(self.url)
-            retval, frame = self.camera.read()
-            if not retval:
-                self.connected = False
-            else:
-                self.connected = True
-        except:
-            self.connected = False
-        finally:
-            if not self.connected:
-                self.thread_logger_signal.emit('ERROR', str("There is no connected camera"))
-        """
-        self.connected = True
-
-    def set_action(self):
-        self.thread_logger_signal.connect(self.parent.receive_log)
-        self.screen_signal.connect(self.parent.update_screen)
-        self.graph_signal.connect(self.parent.update_screen)
-        self.save_signal.connect(self.parent.save_image)
+        
+        self.connected = self.camera.connect_camera(self.url)
+        if not self.connected:
+            self.thread_logger_signal.emit('ERROR', str("There is no connected camera"))
 
     def run(self):
         while self.working:
+            self.camera.idx = self.idx
             if self.idx == CAMERA_EXIT:
+                self.sleep(1)
                 break
             elif self.idx == CAMERA_CAPTURE:
                 self.take_pictures()
-            
             self.show_screen()
-        
+
     def stop(self):
         self.working = False
         self.sleep(1)
         self.quit()
 
-    @Slot(int, int)
-    def receive_signal(self, idx, value):
-        self.idx = idx
-        # OpenCV can not control IP webcam's parameters...
-        ### Camera Control
-        if self.idx == CAMERA_GAIN:
-            self.gain = int(value)
-            #self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
-        elif self.idx == CAMERA_FPS:
-            self.frame = int(value)
-            #self.camera.set(cv2.CAP_PROP_FPS, self.frame)
-        elif self.idx == CAMERA_EXPOSURE_TIME:
-            # OpenCV exposure time: 2^(exposure_time_value)
-            # exposure_time_value range: 0 ~ -13
-            self.exposure_time = float(value)
-            if self.exposure_time >= 1000: value = 0
-            elif self.exposure_time < 1000 and self.exposure_time >= 500: value = -1
-            elif self.exposure_time < 500 and self.exposure_time >= 250: value = -2
-            elif self.exposure_time < 250 and self.exposure_time >= 125: value = -3
-            elif self.exposure_time < 125 and self.exposure_time >= 62.5: value = -4
-            elif self.exposure_time < 62.5 and self.exposure_time >= 31.3: value = -5
-            elif self.exposure_time < 31.3 and self.exposure_time >= 15.6: value = -6
-            elif self.exposure_time < 15.6 and self.exposure_time >= 7.8: value = -7
-            elif self.exposure_time < 7.8 and self.exposure_time >= 3.9: value = -8
-            elif self.exposure_time < 3.9 and self.exposure_time >= 2: value = -9
-            elif self.exposure_time < 2 and self.exposure_time >= 0.9766: value = -10
-            #self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
-        elif self.idx == CAMERA_REPEAT:
-            self.repeat = value
-    
-    @Slot(str)
-    def redraw_signal(self, image):
-        self.analyze_picture(image)
-
     def take_pictures(self):
         if not self.connected: return
         self.last_picture = self.image
         outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
+        if self.save_filtered_image:
+            cv2.imwrite(outname, self.filter_image(self.last_picture))
         self.save_signal.emit(outname)
         self.analyze_picture()
         self.idx = CAMERA_SHOW
-
         return
+
         for i in range(1, self.repeat+1):
             if not self.working: break
             if self.idx == CAMERA_STOP:
@@ -158,6 +119,9 @@ class Blueberry(QThread):
             #key = cv2.waitKey(self.frame)
             self.sleep(self.exposure_time * 0.001)
         self.idx = CAMERA_SHOW
+
+    def rotate_image(self, image):
+        return image
 
     def filter_image(self, image):
         if self.filter_code == BKG_SUBSTRACTION:
@@ -199,59 +163,30 @@ class Blueberry(QThread):
         if not self.connected: return
         if not self.working: return
 
-        """
-        self.camera = cv2.VideoCapture(self.url)
-        self.camera.set(3,self.picture_width)
-        self.camera.set(4,self.picture_height)
-        retval, self.image = self.camera.read()
-        """
-
-        self.image = cv2.imread("/home/seohyeon/work/BeamMonitor/SCFC/data/raw_data/500ms_6db.bmp")
+        self.image = self.camera.take_a_picture()
+        image = self.rotate_image(self.image)
         image = self.filter_image(self.image)
-
-        height, width, channel = image.shape
-        qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
-        pixmap = QPixmap.fromImage(qImg)
-        self.screen_signal.emit(PICTURE_SCREEN, pixmap)
+        self.screen_signal.emit(PICTURE_SCREEN, image)
 
     def analyze_picture(self, image=None):
         if image is None:
             image = self.last_picture
         elif str(type(image)) == "<class 'str'>":
-            image = cv2.imroad(image)
+            image = cv2.imread(image)
         else:
             image = image
+        image = self.rotate_image(image)
         image = self.filter_image(image)
         height, width, channel = image.shape
-        # 좌표: 좌상, 좌하, 우상, 우하
-        #destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
-        #transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), destination_points)
-        #transformed_image = cv2.warpPerspective(image, transform_matrix, (800, 800))
 
         transformed_image = self.transform_image(image)
-        
         transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
 
         nxpixel, nypixel = transformed_image.shape
-        print(self.mm_per_pixel)
         xbin = [0 - float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))] + [0 + float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))]
         xbin.sort()
         ybin = [0 - float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))] + [0 + float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))]
         ybin.sort()
-
-        #xbin_for_filling = []
-        #for j in range(nypixel):
-        #    xbin_for_filling += [-20 + float(j) * self.pixel_to_mm for i in range(nxpixel)]
-        #ybin_for_filling = [-20 + float(i) * self.pixel_to_mm for i in range(nypixel)] * nxpixel
-        #pixel_brightness = transformed_image.flatten()
-
-        #hist2d, xbin, ybin = np.histogram2d(xbin_for_filling, ybin_for_filling, bins=[nxpixel, nypixel], weights=pixel_brightness)
-        #hist2d = hist2d.T
-        # Numpy histogram 으로 1d histogram 만들면 filling이 이상하게 됨... 왜지?
-        #xhist, xbin = np.histogram(xbin_for_filling, bins=nxpixel, weights=pixel_brightness)
-        #yhist, ybin = np.histogram(ybin_for_filling, bins=nypixel, weights=pixel_brightness)
-        #xhist_percent = np.asarray(xhist)/max(xhist) * 100
-        #yhist_percent = np.asarray(yhist)/max(yhist) * 100
 
         xhist = [0 for i in range(nxpixel)]
         yhist = [0 for i in range(nypixel)]
@@ -269,13 +204,13 @@ class Blueberry(QThread):
             xfit = gauss(xbin, *xfitpara)
             xfitline = list(zip(xbin, xfit))
         except:
-            xfitline = None
+            xfitline = list(zip(xbin, [0 for i in range(len(xbin))]))
         try:
             yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
             yfit = gauss(ybin, *yfitpara)
             yfitline = list(zip(ybin, yfit))
         except:
-            yfitline = None
+            yfitline = list(zip(xbin, [0 for i in range(len(ybin))]))
         
         xmax, ymax = np.argmax(xhist), np.argmax(yhist)
         xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
@@ -285,3 +220,37 @@ class Blueberry(QThread):
         self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
         self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
 
+    @Slot(int, int)
+    def receive_signal(self, idx, value):
+        self.idx = idx
+        # OpenCV can not control IP webcam's parameters...
+        ### Camera Control
+        if self.idx == CAMERA_GAIN:
+            self.gain = int(value)
+            #self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
+        elif self.idx == CAMERA_FPS:
+            self.frame = int(value)
+            #self.camera.set(cv2.CAP_PROP_FPS, self.frame)
+        elif self.idx == CAMERA_EXPOSURE_TIME:
+            # OpenCV exposure time: 2^(exposure_time_value)
+            # exposure_time_value range: 0 ~ -13
+            self.exposure_time = float(value)
+            if self.exposure_time >= 1000: value = 0
+            elif self.exposure_time < 1000 and self.exposure_time >= 500: value = -1
+            elif self.exposure_time < 500 and self.exposure_time >= 250: value = -2
+            elif self.exposure_time < 250 and self.exposure_time >= 125: value = -3
+            elif self.exposure_time < 125 and self.exposure_time >= 62.5: value = -4
+            elif self.exposure_time < 62.5 and self.exposure_time >= 31.3: value = -5
+            elif self.exposure_time < 31.3 and self.exposure_time >= 15.6: value = -6
+            elif self.exposure_time < 15.6 and self.exposure_time >= 7.8: value = -7
+            elif self.exposure_time < 7.8 and self.exposure_time >= 3.9: value = -8
+            elif self.exposure_time < 3.9 and self.exposure_time >= 2: value = -9
+            elif self.exposure_time < 2 and self.exposure_time >= 0.9766: value = -10
+            #self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
+        elif self.idx == CAMERA_REPEAT:
+            self.repeat = value
+    
+    @Slot(str)
+    def redraw_signal(self, image):
+        print(image)
+        self.analyze_picture(image)

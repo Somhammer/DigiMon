@@ -1,6 +1,7 @@
 import os, sys
+import time
+import datetime
 import logging
-
 
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
@@ -11,6 +12,8 @@ import pyqtgraph as pg
 import math
 import numpy as np
 from scipy.optimize import curve_fit
+
+import matplotlib.pyplot as plt
 
 from src.logger import LogStringHandler
 from src.ui_emittancewindow import Ui_EmittanceWindow
@@ -26,6 +29,16 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
         self.logger.setLevel(logging.INFO)
         handler = LogStringHandler(self.textLog)
         self.logger.addHandler(handler)
+
+        self.outdir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'output', datetime.datetime.today().strftime('%y%m%d'))
+        if not os.path.exists(self.outdir):
+            os.makedirs(self.outdir)
+        if not os.path.exists(os.path.join(self.outdir, 'image')):
+            os.makedirs(os.path.join(self.outdir, 'image'))
+        if not os.path.exists(os.path.join(self.outdir, 'profile')):
+            os.makedirs(os.path.join(self.outdir, 'profile'))
+        if not os.path.exists(os.path.join(self.outdir, 'emittance')):
+            os.makedirs(os.path.join(self.outdir, 'emittance'))
 
         self.images = {}
 
@@ -202,10 +215,22 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             self.gradient = gradient
             self.xbeam_size = xbeam_size
             self.ybeam_size = ybeam_size
+            focal_length = self.focal_length(self.gradient)
+            xbeam_squared = [i**2 for i in self.xbeam_size]
+            ybeam_squared = [i**2 for i in self.ybeam_size]
+
+            if len(gradient + xbeam_size + ybeam_size) > 0:
+                self.plotSize.setXRange(min(gradient), max(gradient))
+                self.plotSize.setYRange(min(xbeam_size), max(xbeam_size))
+                self.plotXbeamSize.setXRange(min(focal_length), max(focal_length))
+                self.plotXbeamSize.setYRange(min(xbeam_squared), max(xbeam_squared))
+                self.plotYbeamSize.setXRange(min(focal_length), max(focal_length))
+                self.plotYbeamSize.setYRange(min(ybeam_squared), max(ybeam_squared))
 
             self.plotSize.plot(gradient, xbeam_size, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
-            self.plotXbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.xbeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
-            self.plotYbeamSize.plot(self.focal_length(self.gradient), [i**2 for i in self.ybeam_size], pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
+            self.plotSize.plot(gradient, ybeam_size, pen=gara_pen, symbol='o', symbolBrush=(252, 36, 3), symbolSize=10, symbolPen=gara_pen)
+            self.plotXbeamSize.plot(focal_length, xbeam_squared, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
+            self.plotYbeamSize.plot(focal_length, ybeam_squared, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
         else:
             return
 
@@ -232,7 +257,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             focal_length = self.focal_length(self.gradient)
             beam_size_squared = {'x':[pow(i,2) for i in self.xbeam_size], 'y':[pow(i,2) for i in self.ybeam_size]}
 
-            quad = lambda x, a, b, c: a*(x**2) + b*x + c
+            quad = lambda x, a, b, c: a*(x*x) + b*x + c
             for axis, size in beam_size_squared.items():
                 if axis == 'x':
                     plot = self.plotXbeamSize
@@ -247,7 +272,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                     line_gamma = self.lineGammaY
                     line_emit = self.lineEmittanceY
                 try:
-                    fitpara, fitconv = curve_fit(quad, size)
+                    fitpara, fitconv = curve_fit(quad, focal_length, size)
                     fitline = quad(focal_length, *fitpara)
                     plot.plot(focal_length, fitline, pen=pg.mkPen(color=(227, 28, 14), width=2))
 
@@ -256,9 +281,14 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                     fitpara = [0,0,0]
                     self.logger.error(f"{axis}-axis: Fit failed")
             
-                s11 = fitpara[0]/drift**2
-                s12 = (fitpara[1] - 2*drift*s11)/(2*drift**2)
-                s22 = (fitpara[2] - s11 - 2*drift*s12)/drift**2
+                if drift != 0.0:
+                    s11 = fitpara[0]/drift**2
+                    s12 = (fitpara[1] - 2*drift*s11)/(2*drift**2)
+                    s22 = (fitpara[2] - s11 - 2*drift*s12)/drift**2
+                else:
+                    s11 = 0
+                    s12 = 0
+                    s22 = 0
                 determinant = s11*s22 - s12**2
                 if determinant < 0:
                     self.logger.error(f"{axis}-axis: Determinant is lower than 0")
@@ -283,6 +313,15 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                 line_beta.setText(str(beta))
                 line_gamma.setText(str(gamma))
                 line_emit.setText(str(emittance))
+
+                plt.scatter(focal_length, size)
+                try:
+                    plt.plot(focal_length, fitline, linestyle='dashed')
+                except:
+                    pass
+                plt.savefig(os.path.join(self.outdir, 'emittance', f'{axis}test.png'))
+                plt.close()
+
 
     def focal_length(self, values):
         new = []

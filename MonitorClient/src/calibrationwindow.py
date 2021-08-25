@@ -1,5 +1,8 @@
 import os, sys
 import math
+import textwrap
+import yaml
+
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
@@ -26,27 +29,40 @@ class DigiLabel(QLabel):
             self.left = True
 
 class CalibrationWindow(QDialog, Ui_CalibrationWindow):
-    def __init__(self):
+    def __init__(self, image='', original_points=[], destination_points=[], mm_per_pixel=[1.0, 1.0]):
         super(CalibrationWindow, self).__init__()
         self.setupUi(self)
 
-        self.control = False
-
-        self.original_points = []
+        self.original_points = original_points
+        self.destination_points = destination_points
         self.resized_points = []
 
         self.labelOrigin = DigiLabel(self.labelOrigin)
+        self.image_name = image
         self.image_origin = None
         self.transformed_image = None
 
-        self.mm_per_pixel = [1.0, 1.0]
+        self.mm_per_pixel = mm_per_pixel
 
         self.ratio_width = 1
         self.ratio_height = 1
 
-        self.set_image("/home/seohyeon/work/BeamMonitor/SCFC/cali/20170330.bmp")
+        if image != '' and len(self.original_points + self.destination_points) > 0:
+            self.load()
+
         self.set_action()
         self.show()
+
+    def keyPressEvent(self, event):
+        if event.modifiers() & Qt.ControlModifier:
+            if any(i == event.key() for i in [Qt.Key_Right, Qt.Key_Left, Qt.Key_Up, Qt.Key_Down]):
+                self.move_circle(event.key())
+
+    def closeEvent(self, event):
+        if self.transformed_image is not None:
+            self.click_ok()
+        else:
+            self.click_cancel()
 
     def clickable(self, widget):
         class Filter(QObject):
@@ -64,9 +80,6 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
         return custom_filter.clicked
 
     def set_action(self):
-        self.pushOk.clicked.connect(self.click_ok)
-        self.pushCancel.clicked.connect(self.click_cancel)
-
         self.clickable(self.labelOrigin).connect(self.draw_circle)
 
         def set_value(width, height):
@@ -74,22 +87,62 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
             if height == '': height = 1.0
             self.mm_per_pixel = [float(width), float(height)]
 
-        self.linePixelWidth.textChanged.connect(lambda: set_value(self.linePixelWidth.text(), self.linePixelHeight.text()))
-        self.linePixelHeight.textChanged.connect(lambda: set_value(self.linePixelWidth.text(), self.linePixelHeight.text()))
+        self.linePixelWidth.editingFinished.connect(lambda: set_value(self.linePixelWidth.text(), self.linePixelHeight.text()))
+        self.linePixelHeight.editingFinished.connect(lambda: set_value(self.linePixelWidth.text(), self.linePixelHeight.text()))
 
-        self.pushOpen.clicked.connect(self.open_image)
+        #self.pushSave.clicked.connect(self.save)
+        self.pushOpen.clicked.connect(lambda: self.open())
         self.pushConvert.clicked.connect(self.convert_image)
+        self.pushOk.clicked.connect(self.click_ok)
+        self.pushCancel.clicked.connect(self.click_cancel)
 
-    def open_image(self):
-        image_extension = ["Image file (*.bmp *.jpg *jpeg *png)"]
-        fname = QFileDialog.getOpenFileName(self, "Select Image", selectedFilter=image_extension[0], filter='\n'.join(i for i in image_extension))[0]
+    def open(self):
+        extension = ["Image file (*.bmp *.jpg *jpeg *png)"]
+        fname = QFileDialog.getOpenFileName(self, "Select Image", selectedFilter=extension[0], filter='\n'.join(i for i in extension))[0]
+        
         if fname != '':
             self.set_image(fname)
-    
+            self.original_points = []
+            self.destination_points = []
+            self.resized_points = []
+
+    def load(self):
+        self.set_image(self.image_name)
+        if len(self.original_points) > 0:
+            for point in self.original_points:
+                x, y = point[0]/self.ratio_width, point[1]/self.ratio_height
+                self.resized_points.append([int(x), int(y)])
+
+            halflength = 100
+            painter = QPainter(self.pixmap)
+            for point in self.resized_points:
+                painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
+                painter.drawLine(point[0]- halflength, point[1], point[0] + halflength, point[1])
+                painter.drawLine(point[0], point[1] - halflength, point[0], point[1] + halflength)
+                painter.setPen(QPen(QColor(5, 79, 181), 10, Qt.SolidLine, Qt.RoundCap))
+                painter.drawPoint(point[0], point[1])
+
+            painter.end()
+            self.labelOrigin.setPixmap(self.pixmap)
+            print("1",self.original_points, self.resized_points, self.ratio_width, self.ratio_height)
+
+        if len(self.destination_points) > 1:
+            w = round(self.destination_points[2][0] - self.destination_points[0][0])
+            h = round(self.destination_points[1][1] - self.destination_points[0][1])
+            print(self.destination_points, w,h)
+            self.lineWidth.setText(str(w))
+            self.lineHeight.setText(str(h))
+
+        if len(self.mm_per_pixel) > 1:
+            self.linePixelWidth.setText(str(self.mm_per_pixel[0]))
+            self.linePixelHeight.setText(str(self.mm_per_pixel[1]))
+        
+        self.convert_image()
+                
     def set_image(self, name):
         if name == "": return
+        self.image_name = name
         self.image_origin = cv2.imread(name)
-        self.labelFile.setText(f"Image: {name}")
         self.image = cv2.resize(self.image_origin, dsize=(450,450), interpolation=cv2.INTER_LINEAR)
         height, width, channel = self.image.shape
         self.ratio_width = self.image_origin.shape[1] / width
@@ -105,7 +158,7 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
 
         if self.labelOrigin.left:
             if len(self.resized_points) == 4: return
-            self.resized_points.append((self.labelOrigin.x, self.labelOrigin.y))
+            self.resized_points.append([self.labelOrigin.x, self.labelOrigin.y])
             painter = QPainter(self.pixmap)
             painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
             painter.drawLine(self.labelOrigin.x - halflength, self.labelOrigin.y, self.labelOrigin.x + halflength, self.labelOrigin.y)
@@ -129,7 +182,7 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
                     y = point[1]
 
             if x != 999 and y != 999:
-                self.resized_points.remove((x,y))
+                self.resized_points.remove([x,y])
 
             for point in self.resized_points:
                 painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
@@ -163,7 +216,7 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
             y = y + 1
 
         self.resized_points.pop(-1)
-        self.resized_points.append((x, y))
+        self.resized_points.append([x, y])
 
         for point in self.resized_points:
             painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
@@ -183,7 +236,9 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
             x, y = point[0], point[1]
             x *= self.ratio_width
             y *= self.ratio_height
-            self.original_points.append((int(x), int(y)))
+            if len(self.original_points) == 4:
+                self.original_points = []
+            self.original_points.append([int(x), int(y)])
 
         half_width = self.image_origin.shape[1] / 2
         half_height = self.image_origin.shape[0] / 2
@@ -200,12 +255,13 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
                 lower_right = point
 
         self.original_points = [upper_left, lower_left, upper_right, lower_right]
-        w = max(math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2))
-        h = max(math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2))
+        w = int(max(math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)))
+        h = int(max(math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)))
         if not (self.lineWidth.text() == '' and self.lineHeight.text() == ''):
+            print(self.lineWidth.text(), self.lineHeight.text())
             w = int(self.lineWidth.text())
             h = int(self.lineHeight.text())
-        self.destination_points = [upper_left, (upper_left[0], upper_left[1]+h), (upper_left[0]+w, upper_left[1]), (upper_left[0]+w, upper_left[1]+h)]
+        self.destination_points = [upper_left, [upper_left[0], upper_left[1]+h], [upper_left[0]+w, upper_left[1]], [upper_left[0]+w, upper_left[1]+h]]
 
         # 좌표: 좌상, 좌하, 우상, 우하
         transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
@@ -226,14 +282,6 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
 
         self.labelTrans.resize(self.pixmap2.width(), self.pixmap2.height())
         self.labelTrans.setPixmap(self.pixmap2)
-
-    def keyPressEvent(self, event):
-        if event.modifiers() & Qt.ControlModifier:
-            if any(i == event.key() for i in [Qt.Key_Right, Qt.Key_Left, Qt.Key_Up, Qt.Key_Down]):
-                self.move_circle(event.key())
-
-    def closeEvent(self, event):
-        self.click_cancel()
 
     def click_ok(self):
         self.accept()

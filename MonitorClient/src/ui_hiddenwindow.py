@@ -12,6 +12,7 @@ from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
 
+
 class Ui_HiddenWindow(object):
     def setupUi(self, CloseServer):
         if not CloseServer.objectName():
@@ -36,6 +37,7 @@ class Ui_HiddenWindow(object):
 
         self.lineEdit = QLineEdit(CloseServer)
         self.lineEdit.setObjectName(u"lineEdit")
+        self.lineEdit.setEchoMode(QLineEdit.Password)
 
         self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 1)
 

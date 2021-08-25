@@ -1,4 +1,10 @@
+import requests
+import time
+import cv2
 import numpy as np
+import imutils
+
+from src.variables import *
 
 class Camera():
     def __init__(self):
@@ -20,8 +26,8 @@ class Camera():
         self.connected = True
         return self.connected
         try:
-            img_resp = cv2.VideoCapture(self.url)
-            if not img_resp.isOpened():
+            image = cv2.VideoCapture(self.url)
+            if not image.isOpened():
                 self.connected = False
             else:
                 self.connected = False
@@ -31,6 +37,9 @@ class Camera():
         return self.connected
 
     def take_a_picture(self):
+        image = cv2.imread("/home/seohyeon/work/BeamMonitor/SCFC/data/raw_data/500ms_6db.bmp")
+        return image
+
         img_resp = cv2.VideoCapture(self.url)
         retval, image = img_resp.read()
         return image

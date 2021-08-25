@@ -20,6 +20,8 @@ class Blackberry():
             return
 
     def send_command(self, cmd):
+        if not self.connected:
+            return
         self.client_socket.send(cmd.encode())
         response = self.client_socket.recv(1024)
         return repr(response.decode())

@@ -26,6 +26,9 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.labelImage.resize(width, height)
         self.labelImage.setPixmap(pixmap)
 
+        self.code = None
+        self.parameters = None
+
         self.set_action()
         self.show()
     
@@ -33,9 +36,8 @@ class FilterWindow(QDialog, Ui_FilterWindow):
         self.logger_signal.connect(self.parent.receive_log)
 
         self.pushApply.clicked.connect(self.apply_filter)
-
-        self.buttonBox.accepted.connect(self.click_ok)
-        self.buttonBox.rejected.connect(self.click_cancel)
+        self.pushOk.clicked.connect(self.click_ok)
+        self.pushCancel.clicked.connect(self.click_cancel)
 
         self.comboFilter.currentTextChanged.connect(self.load_parameters)
 

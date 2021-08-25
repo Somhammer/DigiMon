@@ -17,15 +17,23 @@ class Ui_FilterWindow(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
-        Dialog.resize(710, 318)
+        Dialog.resize(678, 318)
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.buttonBox = QDialogButtonBox(Dialog)
-        self.buttonBox.setObjectName(u"buttonBox")
-        self.buttonBox.setOrientation(Qt.Vertical)
-        self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
+        self.comboFilter = QComboBox(Dialog)
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.setObjectName(u"comboFilter")
 
-        self.gridLayout.addWidget(self.buttonBox, 0, 3, 4, 1)
+        self.gridLayout.addWidget(self.comboFilter, 0, 0, 1, 1)
+
+        self.pushOk = QPushButton(Dialog)
+        self.pushOk.setObjectName(u"pushOk")
+
+        self.gridLayout.addWidget(self.pushOk, 0, 3, 1, 1)
 
         self.frameImage = QFrame(Dialog)
         self.frameImage.setObjectName(u"frameImage")
@@ -43,20 +51,15 @@ class Ui_FilterWindow(object):
 
         self.gridLayout.addWidget(self.frameImage, 0, 2, 4, 1)
 
-        self.comboFilter = QComboBox(Dialog)
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.setObjectName(u"comboFilter")
-
-        self.gridLayout.addWidget(self.comboFilter, 0, 0, 1, 1)
-
         self.pushApply = QPushButton(Dialog)
         self.pushApply.setObjectName(u"pushApply")
 
         self.gridLayout.addWidget(self.pushApply, 0, 1, 1, 1)
+
+        self.pushCancel = QPushButton(Dialog)
+        self.pushCancel.setObjectName(u"pushCancel")
+
+        self.gridLayout.addWidget(self.pushCancel, 1, 3, 1, 1)
 
         self.listParameters = QListWidget(Dialog)
         self.listParameters.setObjectName(u"listParameters")
@@ -70,21 +73,21 @@ class Ui_FilterWindow(object):
 
 
         self.retranslateUi(Dialog)
-        self.buttonBox.accepted.connect(Dialog.accept)
-        self.buttonBox.rejected.connect(Dialog.reject)
 
         QMetaObject.connectSlotsByName(Dialog)
     # setupUi
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Dialog", None))
-        self.labelImage.setText("")
         self.comboFilter.setItemText(0, QCoreApplication.translate("Dialog", u"Select", None))
         self.comboFilter.setItemText(1, QCoreApplication.translate("Dialog", u"Background Substraction", None))
         self.comboFilter.setItemText(2, QCoreApplication.translate("Dialog", u"Gaussian", None))
         self.comboFilter.setItemText(3, QCoreApplication.translate("Dialog", u"Median", None))
         self.comboFilter.setItemText(4, QCoreApplication.translate("Dialog", u"Bilateral", None))
 
+        self.pushOk.setText(QCoreApplication.translate("Dialog", u"Ok", None))
+        self.labelImage.setText("")
         self.pushApply.setText(QCoreApplication.translate("Dialog", u"Apply", None))
+        self.pushCancel.setText(QCoreApplication.translate("Dialog", u"Cancel", None))
     # retranslateUi
 

@@ -1,12 +1,8 @@
-import cv2
-
-from PySide6.QtWidgets import *
 from PySide6.QtCore import *
-from PySide6.QtGui import *
 
 from vimba import *
 
-from variables import *
+from src.camera import Camera
 
 class Camera():
     def __init__(self):
@@ -14,40 +10,25 @@ class Camera():
         self.gain = None
         self.frame = None
         self.exposure_time = None
-        self.repeat = None
         
-    def try_connection(self):
+    # Camera controling
+    def set_parameter(self):
+        print("MELONA")
+
+    def connect_camera(self):
         with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
             if len(cams) < 1:
-                return "There is no connected camera", False
-            elif len(cams) == 1:
-                return "1 camera is connected", True
+                self.connected = False
             else:
-                return f"{len(cams)} cameras are connected", False
+                self.connected = False
+        return self.connected
 
-    def control_camera(self, idx, value):
-        if self.idx == CAMERA_GAIN:
-            self.camera.Gain = value
-            self.gain = int(self.value)
-        elif self.idx == CAMERA_FPS:
-            self.frame = float(self.value / 60)
-        elif self.idx == CAMERA_EXPOSURE_TIME:
-            self.exposure_time = float(self.value)
-        elif self.idx == CAMERA_REPEAT:
-            self.repeat = self.value
-    
     def take_a_picture(self):
-        #with self.camera as vimba:
-        with Vimba().get_instance().get_all_cameras()[0] as vimba:
+        with Vimba.get_instance() as vimba:
             cams = vimba.get_all_cameras()
             with cams[0] as cam:
-                for frame in cam.get_frame_generator(limit=10):
-                    frame.convert_pixel_format(PixelFormat.Mono8)
-                    
-                    
-    
-    def update_screen(self):
-        self.camera.start_streaming(frame)
-
-camera = Camera()
+                frame = cam.get_frame()
+                frame.convert_pixel_format(PixelFormat.Mono8)
+                image = frame.as_opencv_image()
+        return image
