@@ -297,7 +297,7 @@ class Ui_EmittanceWindow(object):
         self.comboMethod.setItemText(2, QCoreApplication.translate("Dialog", u"Quadrupole Scan", None))
 
         ___qtablewidgetitem = self.tableProfiles.horizontalHeaderItem(1)
-        ___qtablewidgetitem.setText(QCoreApplication.translate("Dialog", u"Gradient", None));
+        ___qtablewidgetitem.setText(QCoreApplication.translate("Dialog", u"Current", None));
         ___qtablewidgetitem1 = self.tableProfiles.horizontalHeaderItem(2)
         ___qtablewidgetitem1.setText(QCoreApplication.translate("Dialog", u"Beam Size(x)", None));
         ___qtablewidgetitem2 = self.tableProfiles.horizontalHeaderItem(3)

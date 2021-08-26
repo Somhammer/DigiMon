@@ -42,20 +42,32 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
 
         self.images = {}
 
-        self.gradient = []
+        # Raw Data
+        self.current = []
         self.xbeam_size = []
         self.ybeam_size = []
 
+        # Mean Values
+        self.xbeam_squared = {}
+        self.ybeam_squared = {}
+
         self.user_setting_parameters = {
-            "mass":["Mass (MeV/c^2)", 0.0],
-            "charge":["Charge (C)", 0.0],
-            "kenergy":["Kinetic Energy (MeV)", 0.0], 
-            "elength":["Effective length (m)", 0.0],
-            "drift":["Drift (m)",0.0]
+            "3DProfile":{},
+            "QuadScan":{
+                "converting":["Gradient/Current (T/m*A)", 1.0],
+                "mass":["Mass (MeV/c^2)", 0.0],
+                "charge":["Charge (C)", 0.0],
+                "kenergy":["Kinetic Energy (MeV)", 0.0], 
+                "elength":["Effective length (m)", 0.0],
+                "drift":["Drift (m)",0.0]
+            }
         }
         self.readonly_parameters = {
-            "momentum":["Momentum (MeV/c)",0.0], 
-            "rigidity":["Rigidity (T*m)", 0.0]
+            "3DProfile":{},
+            "QuadScan":{
+                "momentum":["Momentum (MeV/c)",0.0], 
+                "rigidity":["Rigidity (T*m)", 0.0]
+            }
         }
 
         self.speed_of_light = 299792458 # m/s
@@ -109,10 +121,26 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
 
     def initialize_measurement(self):
         if self.comboMethod.currentText() == "3D Profile":
-            pass
+            idx = 0
+            for key, value in self.user_setting_parameters['3DProfile'].items():
+                label = QLabel(value[0])
+                line = QLineEdit(str(value[1]))
+                line.editingFinished.connect(self.calculate_parameters)
+                self.gridParameters.addWidget(label, idx, 0)
+                self.gridParameters.addWidget(line, idx, 1)
+                idx += 1
+
+            for key, value in self.readonly_parameters['3DProfile'].items():
+                label = QLabel(value[0])
+                line = QLineEdit(str(value[1]))
+                line.setReadOnly(True)
+                self.gridParameters.addWidget(label, idx, 0)
+                self.gridParameters.addWidget(line, idx, 1)
+                idx += 1
+            
         elif self.comboMethod.currentText() == "Quadrupole Scan":
             idx = 0
-            for key, value in self.user_setting_parameters.items():
+            for key, value in self.user_setting_parameters['QuadScan'].items():
                 label = QLabel(value[0])
                 line = QLineEdit(str(value[1]))
                 line.textChanged.connect(self.calculate_parameters)
@@ -120,7 +148,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                 self.gridParameters.addWidget(line, idx, 1)
                 idx += 1
                 
-            for key, value in self.readonly_parameters.items():
+            for key, value in self.readonly_parameters['QuadScan'].items():
                 label = QLabel(value[0])
                 line = QLineEdit(str(value[1]))
                 line.setReadOnly(True)
@@ -160,8 +188,8 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
         elif self.comboMethod.currentText() == "Quadrupole Scan":
             self.plotSize = self.glayout.addPlot(title="Beam Size", row=1, col=1, rowspan=1, colspan=1)
             self.plotSize.showGrid(x=True, y=True)
-            self.plotSize.setLabel('left', 'Beam Size', 'mm')
-            self.plotSize.setLabel('bottom', 'Quadrupole Gradient', 'T/m')
+            self.plotSize.setLabel('left', r'Beam Size <math>&radic;&sigma;<sup>`</sup><sub>11</sub></math>', 'mm')
+            self.plotSize.setLabel('bottom', 'Coil Current', 'A')
             self.plotSize.setXRange(-10, 10)
             self.plotSize.setYRange(0, 20)
             #self.plotSize.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
@@ -169,22 +197,22 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
 
             self.plotFitError = self.glayout.addPlot(title="Fit error", row=1, col=2, rowspan=1, colspan=1)
             self.plotFitError.showGrid(x=True, y=True)
-            self.plotFitError.setLabel('left', 'Beam Size', 'mm')
-            self.plotFitError.setLabel('bottom', 'Inverse Focal Length', '1/m')
+            self.plotFitError.setLabel('left', 'Number of Events', '')
+            self.plotFitError.setLabel('bottom', 'Fit Error', 'mm')
             self.plotFitError.setXRange(0, 20)
             self.plotFitError.setYRange(0, 20)
 
             self.plotXbeamSize = self.glayout.addPlot(title="", row=2, col=1, rowspan=1, colspan=1)
             self.plotXbeamSize.showGrid(x=True, y=True)
-            self.plotXbeamSize.setLabel('left', 'Beam Size Squared', 'mm^2')
-            self.plotXbeamSize.setLabel('bottom', 'Inverse Focal Length', '1/m')
+            self.plotXbeamSize.setLabel('left', r'Beam Size Squared <math>&sigma;<sup>`</sup><sub>x, 11</sub></math>', r'<math>mm<sup>2</sup></math>')
+            self.plotXbeamSize.setLabel('bottom', r'Inverse Focal Length <math>f<sup>-1</sup></math>', r'<math>m<sup>-1</sup></math>')
             self.plotXbeamSize.setXRange(0, 20)
             self.plotXbeamSize.setYRange(0, 150)
 
             self.plotYbeamSize = self.glayout.addPlot(title="", row=2, col=2, rowspan=1, colspan=1)
             self.plotYbeamSize.showGrid(x=True, y=True)
-            self.plotYbeamSize.setLabel('left', 'Beam Size Squared', 'mm^2')
-            self.plotYbeamSize.setLabel('bottom', 'Inverse Focal Length', '1/m')
+            self.plotYbeamSize.setLabel('left', r'Beam Size Squared <math>&sigma;<sup>`</sup><sub>y, 11</sub></math>', r'<math>mm<sup>2</sup></math>')
+            self.plotYbeamSize.setLabel('bottom', r'Inverse Focal Length <math>f<sup>-1</sup></math>', r'<math>m<sup>-1</sup></math>')
             self.plotYbeamSize.setXRange(0, 20)
             self.plotYbeamSize.setYRange(0, 150)
         else:
@@ -202,33 +230,48 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             self.plotFitError.clearPlots()
             self.plotXbeamSize.clearPlots()
             self.plotYbeamSize.clearPlots()
-            gradient = []
+            current = []
             xbeam_size = []
             xbeam_squared = []
             ybeam_size = []
             ybeam_squared = []
             for irow in range(self.tableProfiles.rowCount()):
                 if not self.tableProfiles.cellWidget(irow, 0).isChecked(): continue
-                gradient.append(float(self.tableProfiles.item(irow, 1).text()))
+                current.append(float(self.tableProfiles.item(irow, 1).text()))
                 xbeam_size.append(float(self.tableProfiles.item(irow, 2).text()))
                 ybeam_size.append(float(self.tableProfiles.item(irow, 3).text()))
-            self.gradient = gradient
+            self.current = current
             self.xbeam_size = xbeam_size
             self.ybeam_size = ybeam_size
-            focal_length = self.focal_length(self.gradient)
-            xbeam_squared = [i**2 for i in self.xbeam_size]
-            ybeam_squared = [i**2 for i in self.ybeam_size]
+            gradient = [i*self.user_setting_parameters['QuadScan']['converting'][1] for i in set(self.current)]
+            focal_length = self.focal_length(gradient)
+            self.xbeam_squared = {}
+            temp = {i:[] for i in gradient}
+            for idx, value in enumerate(self.xbeam_size):
+                temp[self.current[idx]*self.user_setting_parameters['QuadScan']['converting'][1]].append(value)
+            for key, value in temp.items():
+                mean = np.mean(value)
+                self.xbeam_squared[key] = (mean**2, 2*mean*np.std(value))
+            self.ybeam_squared = {}
+            temp = {i:[] for i in gradient}
+            for idx, value in enumerate(self.ybeam_size):
+                temp[self.current[idx]*self.user_setting_parameters['QuadScan']['converting'][1]].append(value)
+            for key, value in temp.items():
+                mean = np.mean(value)
+                self.ybeam_squared[key] = (mean**2, 2*mean*np.std(value))
+            xbeam_squared = [i[0] for i in self.xbeam_squared.values()]
+            ybeam_squared = [i[0] for i in self.ybeam_squared.values()]
 
             if len(gradient + xbeam_size + ybeam_size) > 0:
-                self.plotSize.setXRange(min(gradient), max(gradient))
-                self.plotSize.setYRange(min(xbeam_size), max(xbeam_size))
+                self.plotSize.setXRange(min(current), max(current))
+                self.plotSize.setYRange(min(min(xbeam_size), min(ybeam_size)), max(max(xbeam_size), max(ybeam_size)))
                 self.plotXbeamSize.setXRange(min(focal_length), max(focal_length))
                 self.plotXbeamSize.setYRange(min(xbeam_squared), max(xbeam_squared))
                 self.plotYbeamSize.setXRange(min(focal_length), max(focal_length))
                 self.plotYbeamSize.setYRange(min(ybeam_squared), max(ybeam_squared))
 
-            self.plotSize.plot(gradient, xbeam_size, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
-            self.plotSize.plot(gradient, ybeam_size, pen=gara_pen, symbol='o', symbolBrush=(252, 36, 3), symbolSize=10, symbolPen=gara_pen)
+            self.plotSize.plot(current, xbeam_size, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
+            self.plotSize.plot(current, ybeam_size, pen=gara_pen, symbol='o', symbolBrush=(252, 36, 3), symbolSize=10, symbolPen=gara_pen)
             self.plotXbeamSize.plot(focal_length, xbeam_squared, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
             self.plotYbeamSize.plot(focal_length, ybeam_squared, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=10, symbolPen=gara_pen)
         else:
@@ -253,9 +296,11 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             # (2,2) = (c - (1,1) - 2*d*(1,2))/d**2
             # emittance**2 = det(sigma')
 
-            drift = self.user_setting_parameters['drift'][1]
-            focal_length = self.focal_length(self.gradient)
-            beam_size_squared = {'x':[pow(i,2) for i in self.xbeam_size], 'y':[pow(i,2) for i in self.ybeam_size]}
+            drift = self.user_setting_parameters['QuadScan']['drift'][1]
+            gradient = [i*self.user_setting_parameters['QuadScan']['converting'][1] for i in set(self.current)]
+            focal_length = self.focal_length(gradient)
+            beam_size_squared = {'x':[i[0] for i in self.xbeam_squared.values()], 'y':[i[0] for i in self.ybeam_squared.values()]}
+            errors = {'x':[i[1] for i in self.xbeam_squared.values()], 'y':[i[1] for i in self.ybeam_squared.values()]}
 
             quad = lambda x, a, b, c: a*(x*x) + b*x + c
             for axis, size in beam_size_squared.items():
@@ -279,6 +324,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                     self.logger.info(f"{axis}-axis: Fit success")
                 except:
                     fitpara = [0,0,0]
+                    fitline = [0 for i in range(len(focal_length))]
                     self.logger.error(f"{axis}-axis: Fit failed")
             
                 if drift != 0.0:
@@ -304,7 +350,7 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                     gamma = 0.0
                 else:
                     self.logger.info(f"{axis}-axis: Emittance measurement success")
-                    emittance = math.sqrt(determinant)
+                    emittance = math.sqrt(determinant) / math.pi
                     alpha = - s11 / emittance
                     beta = s12 / emittance
                     gamma = s22 / emittance
@@ -314,19 +360,44 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                 line_gamma.setText(str(gamma))
                 line_emit.setText(str(emittance))
 
-                plt.scatter(focal_length, size)
+                # plot2. beam size squared vs inverse focal length
+                if len(size) > 0:
+                    waist = focal_length[size.index(min(size))]
+                else:
+                    waist = 0.0
+
+                plt.title(f"{emittance}"+r" $\pi$ mm.mrad")
+                plt.xlabel(r"Inverse Focal length, $1/f$ $\mathsf{[m^{-1}]}$")
+                plt.ylabel(r"Beam Size Squared, $\sigma^\prime_{"+f"{axis}"+r",11} \mathsf{[mm^2]}$")
+
+                plt.errorbar(focal_length, size, errors[axis], elinewidth=1.05, fmt='o', color='#000000', zorder=3, capsize=2, label=r"$\sigma^\prime_{"+f"{axis}"+r"x,11}$")
+
                 try:
-                    plt.plot(focal_length, fitline, linestyle='dashed')
+                    plt.plot(focal_length, fitline, linestyle='dashed', linewidth=1.5, zorder=2, label='Fit curve')
                 except:
                     pass
-                plt.savefig(os.path.join(self.outdir, 'emittance', f'{axis}test.png'))
-                plt.close()
+                plt.axvline(x=waist, color='#9c9897', linestyle='dashdot', linewidth=1, zorder=1, label='Waist')
+                plt.legend()
 
+                plt.savefig(os.path.join(self.outdir, 'emittance', f'{axis}-axis_emittance.png'))
+                plt.close()
+        
+        # plot1. beam size vs current
+        plt.title(f"Beam Size")
+        plt.xlabel(r"Coil Current, I [A]")
+        plt.ylabel(r"Beam Size $\sqrt{\sigma^\prime_{11}}$ [mm]")
+
+        plt.scatter(self.current, self.xbeam_size, marker='o', color='#070ff0', label=r'Horizontal 1$\sigma$ Size')
+        plt.scatter(self.current, self.ybeam_size, marker='x', color='#f0073a', label=r'Vertical 1$\sigma$ Size')
+
+        plt.legend()
+
+        plt.savefig(os.path.join(self.outdir, 'emittance', f'beamsize.png'))
 
     def focal_length(self, values):
         new = []
-        drift = self.user_setting_parameters['drift'][1]
-        rigidity = self.readonly_parameters['rigidity'][1]
+        drift = self.user_setting_parameters['QuadScan']['drift'][1]
+        rigidity = self.readonly_parameters['QuadScan']['rigidity'][1]
         for i in values:
             if rigidity != 0.0:
                 new.append(i * drift / rigidity)
@@ -342,20 +413,22 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
                 name = self.gridParameters.itemAtPosition(idx, 0).widget().text()
                 value = self.gridParameters.itemAtPosition(idx, 1).widget().text()
 
-                if name == self.user_setting_parameters['mass'][0]:
-                    self.user_setting_parameters['mass'][1] = float(value)
-                elif name == self.user_setting_parameters['kenergy'][0]:
-                    self.user_setting_parameters['kenergy'][1] = float(value)                    
-                elif name == self.user_setting_parameters['charge'][0]:
-                    self.user_setting_parameters['charge'][1] = float(value)                    
-                elif name == self.user_setting_parameters['elength'][0]:
-                    self.user_setting_parameters['elength'][1] = float(value)                    
-                elif name == self.user_setting_parameters['drift'][0]: 
-                    self.user_setting_parameters['drift'][1] = float(value)                   
+                if name == self.user_setting_parameters['QuadScan']['converting'][0]:
+                    self.user_setting_parameters['QuadScan']['converting'][1] = float(value)
+                elif name == self.user_setting_parameters['QuadScan']['mass'][0]:
+                    self.user_setting_parameters['QuadScan']['mass'][1] = float(value)
+                elif name == self.user_setting_parameters['QuadScan']['kenergy'][0]:
+                    self.user_setting_parameters['QuadScan']['kenergy'][1] = float(value)                    
+                elif name == self.user_setting_parameters['QuadScan']['charge'][0]:
+                    self.user_setting_parameters['QuadScan']['charge'][1] = float(value)                    
+                elif name == self.user_setting_parameters['QuadScan']['elength'][0]:
+                    self.user_setting_parameters['QuadScan']['elength'][1] = float(value)                    
+                elif name == self.user_setting_parameters['QuadScan']['drift'][0]: 
+                    self.user_setting_parameters['QuadScan']['drift'][1] = float(value)                   
 
-            mass = self.user_setting_parameters['mass'][1]
-            kenergy = self.user_setting_parameters['kenergy'][1]
-            charge = self.user_setting_parameters['charge'][1]
+            mass = self.user_setting_parameters['QuadScan']['mass'][1]
+            kenergy = self.user_setting_parameters['QuadScan']['kenergy'][1]
+            charge = self.user_setting_parameters['QuadScan']['charge'][1]
 
             momentum = math.pow(mass + kenergy, 2) - math.pow(mass, 2)
             if momentum < 0:
@@ -367,16 +440,16 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
             else:
                 rigidity = 0.0
 
-            self.readonly_parameters['momentum'][1] = momentum
-            self.readonly_parameters['rigidity'][1] = rigidity
+            self.readonly_parameters['QuadScan']['momentum'][1] = momentum
+            self.readonly_parameters['QuadScan']['rigidity'][1] = rigidity
 
             for idx in range(self.gridParameters.rowCount()):
                 name = self.gridParameters.itemAtPosition(idx, 0).widget().text()
                 line = self.gridParameters.itemAtPosition(idx, 1).widget()
 
-                if name == self.readonly_parameters['momentum'][0]:
+                if name == self.readonly_parameters['QuadScan']['momentum'][0]:
                     line.setText(f'{momentum:.2f}')
-                elif name == self.readonly_parameters['rigidity'][0]:
+                elif name == self.readonly_parameters['QuadScan']['rigidity'][0]:
                     line.setText(f'{rigidity:.2f}')
             
             # focal length = gradient * drift / rigidity

@@ -146,15 +146,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dialog = True
         emittance = EmittanceWindow(self)
         r = emittance.return_para()
-        if r:
-            self.lineEmittanceX.setText(emittance.lineEmittanceX.text())
-            self.lineEmittanceY.setText(emittance.lineEmittanceY.text())
-            self.lineAlphaX.setText(emittance.lineAlphaX.text())
-            self.lineAlphaY.setText(emittance.lineAlphaY.text())
-            self.lineBetaX.setText(emittance.lineBetaX.text())
-            self.lineBetaY.setText(emittance.lineBetaY.text())
-            self.lineGammaX.setText(emittance.lineGammaX.text())
-            self.lineGammaY.setText(emittance.lineGammaY.text())
         self.dialog = False
 
     def update_table(self, gradient, beamx, beamy, image):
@@ -180,8 +171,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def open_image(self):
         extension = ["Image file (*.bmp *.jpg *jpeg *png)"]
         fname = QFileDialog.getOpenFileName(self, "Select Image", selectedFilter=extension[0], filter='\n'.join(i for i in extension))[0]
-        self.images_names.append(fname)
-        self.redraw_signal.emit(fname)
+        if fname != '':
+            self.images_names.append(fname)
+            self.redraw_signal.emit(fname)
 
     def resizeEvent(self, event):
         self.previous = self.main_size
