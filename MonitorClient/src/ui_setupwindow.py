@@ -100,7 +100,7 @@ class Ui_SetupWindow(object):
         sizePolicy1.setHeightForWidth(self.sliderGain.sizePolicy().hasHeightForWidth())
         self.sliderGain.setSizePolicy(sizePolicy1)
         self.sliderGain.setFocusPolicy(Qt.TabFocus)
-        self.sliderGain.setMaximum(100)
+        self.sliderGain.setMaximum(200)
         self.sliderGain.setValue(100)
         self.sliderGain.setOrientation(Qt.Horizontal)
 
@@ -213,11 +213,7 @@ class Ui_SetupWindow(object):
 
         self.labelSizePixel = QLabel(self.groupROI)
         self.labelSizePixel.setObjectName(u"labelSizePixel")
-        font2 = QFont()
-        font2.setFamilies([u"Nimbus Sans [urw]"])
-        font2.setPointSize(10)
-        font2.setBold(False)
-        self.labelSizePixel.setFont(font2)
+        self.labelSizePixel.setFont(font1)
 
         self.gridLayout_2.addWidget(self.labelSizePixel, 3, 2, 1, 1)
 
@@ -280,7 +276,7 @@ class Ui_SetupWindow(object):
 
         self.labelSPPixel = QLabel(self.groupROI)
         self.labelSPPixel.setObjectName(u"labelSPPixel")
-        self.labelSPPixel.setFont(font2)
+        self.labelSPPixel.setFont(font1)
 
         self.gridLayout_2.addWidget(self.labelSPPixel, 0, 2, 1, 1)
 
@@ -324,11 +320,7 @@ class Ui_SetupWindow(object):
 
         self.groupFilter = QGroupBox(Dialog)
         self.groupFilter.setObjectName(u"groupFilter")
-        font3 = QFont()
-        font3.setFamilies([u"Nimbus Sans [urw]"])
-        font3.setPointSize(14)
-        font3.setBold(True)
-        self.groupFilter.setFont(font3)
+        self.groupFilter.setFont(font)
         self.gridLayout_4 = QGridLayout(self.groupFilter)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.comboFilter = QComboBox(self.groupFilter)
@@ -341,7 +333,7 @@ class Ui_SetupWindow(object):
         self.comboFilter.setObjectName(u"comboFilter")
         sizePolicy.setHeightForWidth(self.comboFilter.sizePolicy().hasHeightForWidth())
         self.comboFilter.setSizePolicy(sizePolicy)
-        self.comboFilter.setFont(font2)
+        self.comboFilter.setFont(font1)
 
         self.gridLayout_4.addWidget(self.comboFilter, 0, 0, 1, 1)
 
@@ -349,7 +341,7 @@ class Ui_SetupWindow(object):
         self.listParameters.setObjectName(u"listParameters")
         sizePolicy.setHeightForWidth(self.listParameters.sizePolicy().hasHeightForWidth())
         self.listParameters.setSizePolicy(sizePolicy)
-        self.listParameters.setFont(font2)
+        self.listParameters.setFont(font1)
 
         self.gridLayout_4.addWidget(self.listParameters, 1, 0, 1, 2)
 
@@ -357,18 +349,9 @@ class Ui_SetupWindow(object):
         self.pushFilterApply.setObjectName(u"pushFilterApply")
         sizePolicy1.setHeightForWidth(self.pushFilterApply.sizePolicy().hasHeightForWidth())
         self.pushFilterApply.setSizePolicy(sizePolicy1)
-        self.pushFilterApply.setFont(font2)
+        self.pushFilterApply.setFont(font1)
 
         self.gridLayout_4.addWidget(self.pushFilterApply, 2, 0, 1, 1)
-
-        self.checkSaveFilteredImage = QCheckBox(self.groupFilter)
-        self.checkSaveFilteredImage.setObjectName(u"checkSaveFilteredImage")
-        sizePolicy1.setHeightForWidth(self.checkSaveFilteredImage.sizePolicy().hasHeightForWidth())
-        self.checkSaveFilteredImage.setSizePolicy(sizePolicy1)
-        self.checkSaveFilteredImage.setFont(font2)
-        self.checkSaveFilteredImage.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout_4.addWidget(self.checkSaveFilteredImage, 2, 1, 1, 1)
 
 
         self.gridLayout_3.addWidget(self.groupFilter, 3, 1, 1, 4)
@@ -393,7 +376,7 @@ class Ui_SetupWindow(object):
         self.lineExposureTime.setText(QCoreApplication.translate("Dialog", u"500", None))
         self.labelGain.setText(QCoreApplication.translate("Dialog", u"Gain (%)", None))
         self.labelExposureTimeRange.setText(QCoreApplication.translate("Dialog", u"(1- 1000)", None))
-        self.labelGainRange.setText(QCoreApplication.translate("Dialog", u"(0 - 100)", None))
+        self.labelGainRange.setText(QCoreApplication.translate("Dialog", u"(0 - 200)", None))
         self.pushOk.setText(QCoreApplication.translate("Dialog", u"Ok", None))
         self.pushSave.setText(QCoreApplication.translate("Dialog", u"Save", None))
         self.groupROI.setTitle(QCoreApplication.translate("Dialog", u"Region of Interest", None))
@@ -421,6 +404,5 @@ class Ui_SetupWindow(object):
         self.comboFilter.setItemText(5, QCoreApplication.translate("Dialog", u"Bilateral", None))
 
         self.pushFilterApply.setText(QCoreApplication.translate("Dialog", u"Apply", None))
-        self.checkSaveFilteredImage.setText(QCoreApplication.translate("Dialog", u"Save filtered image", None))
     # retranslateUi
 

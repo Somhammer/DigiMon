@@ -94,14 +94,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.comboFilter.currentTextChanged.connect(self.load_filter_parameters)
 
-        def check():
-            if self.checkSaveFilteredImage.isChecked():
-                self.save_filtered_image = True
-            else:
-                self.save_filtered_image = False
-
-        self.checkSaveFilteredImage.stateChanged.connect(check)
-
         self.pushSave.clicked.connect(self.save)
         self.pushLoad.clicked.connect(lambda: self.load())
         self.pushCalibration.clicked.connect(self.calibrate_image)

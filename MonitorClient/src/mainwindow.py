@@ -1,5 +1,7 @@
 import os, sys
 import logging
+import datetime
+
 import numpy as np
 import cv2
 
@@ -8,6 +10,9 @@ from PySide6.QtCore import *
 from PySide6.QtGui import *
 
 import pyqtgraph as pg
+
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 from src.variables import *
 from src.blackberry import Blackberry
@@ -41,6 +46,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.original_images = []
         self.filtered_images = []
 
+        self.livex = None
+        self.livey = None
+
         self.last_picture = None
         self.profile = None
         self.beamx = None
@@ -57,6 +65,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #self.showMaximized()
         self.main_size = [self.width(), self.height()]
         self.image_size = [self.wViewer.width(), self.wViewer.height()]
+        self.plot_livex_size = [self.frameLiveXProfile.width(), self.frameLiveXProfile.height()]
         self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
         self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
         self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
@@ -108,11 +117,50 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             checkbox.setCheckable(False)
 
     def initialize(self):
+        # Connection between raspberry pi, camera and mainwindow
         self.connect_network(self.blackberry, self.checkConnectController)
         self.connect_network(self.blueberry, self.checkConnectCamera)
 
         self.parameter_signal.emit(CAMERA_FPS, self.sliderFrameRate.value())
         self.parameter_signal.emit(CAMERA_REPEAT, self.sliderRepeat.value())
+        self.parameter_signal.emit(CAMERA_GAIN, 100)
+        self.parameter_signal.emit(CAMERA_EXPOSURE_TIME, 500)
+        
+        bluePen = pg.mkPen(color=(0,0,255), width=1)
+
+        self.plotLiveX = pg.PlotWidget()
+        self.plotLiveX.showGrid(x=True, y=True)
+        self.plotLiveX.setLabel('bottom', 'Horizontal')
+        self.liveXCurve = self.plotLiveX.plot(pen=bluePen)
+        #self.plotLiveX.resize(self.frameLiveXProfile.width(), self.frameLiveXProfile.height())
+        self.gridLiveXProfile.addWidget(self.plotLiveX)
+
+        self.plotLiveY = pg.PlotWidget()
+        self.plotLiveY.showGrid(x=True, y=True)
+        self.plotLiveY.setLabel('bottom', 'Vertical')
+        self.liveYCurve = self.plotLiveY.plot(pen=bluePen)
+        self.gridLiveYProfile.addWidget(self.plotLiveY)
+
+        self.plotProfile = pg.PlotWidget(title="Beam Profile")
+        self.plotProfile.setBackground('w')
+        self.plotProfile.showGrid(x=True, y=True)
+        self.plotProfile.setLabel('left', 'Vertical', 'mm')
+        self.plotProfile.setLabel('bottom', 'Horizontal', 'mm')
+        self.gridProfile.addWidget(self.plotProfile)
+
+        self.plotProfileX = pg.PlotWidget(title="Horizontal axis intensity")
+        self.plotProfileX.setBackground('w')
+        self.plotProfileX.showGrid(x=True, y=True)
+        self.plotProfileX.setLabel('left', 'Intensity', '%')
+        self.plotProfileX.setLabel('bottom', 'Horizontal', 'mm')
+        self.gridBeamSizeX.addWidget(self.plotProfileX)
+
+        self.plotProfileY = pg.PlotWidget(title="Vertical axis intensity")
+        self.plotProfileY.setBackground('w')
+        self.plotProfileY.showGrid(x=True, y=True)
+        self.plotProfileY.setLabel('left', 'Intensity', '%')
+        self.plotProfileY.setLabel('bottom', 'Vertical', 'mm')
+        self.gridBeamSizeY.addWidget(self.plotProfileY)
 
         self.blueberry.start()
 
@@ -137,7 +185,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.blueberry.mm_per_pixel = setup.mm_per_pixel
             self.blueberry.filter_code = setup.filter_code
             self.blueberry.filter_para = setup.filter_para
-            self.blueberry.save_filtered_image = setup.checkSaveFilteredImage.isChecked()
 
         self.dialog = False
 
@@ -232,7 +279,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             pixmap = QPixmap.fromImage(qImg)
             pixmap = pixmap.scaled(self.labelViewer.width(), self.labelViewer.height())
             self.labelViewer.setPixmap(pixmap)
+        elif any(target == i for i in [LIVE_XPROFILE_SCREEN, LIVE_YPROFILE_SCREEN]):
+            if target == LIVE_XPROFILE_SCREEN:
+                curve = self.liveXCurve
+            else:
+                curve = self.liveYCurve
+            x1 = []
+            y1 = []
+            for value in graphics:
+                x1.append(value[0])
+                y1.append(value[1])
+            curve.setData(x1, y1)
+            #plot.setXRange(min(x1),max(x1))
+            #plot.setYRange(min(y1), max(y1)+5)
+
+            #plot.plot(x1, y1, pen=gara_pen)#, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
+            #txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[1]:.2f}) mm\nSize: ({additional_curves[2]:.2f}, {additional_curves[3]:.2f}) mm"
+            #text = pg.TextItem(text=txt_pos, color=(0,0,0))
+            #text.setPos(-15,15)
+            #plot.addItem(text)
         elif target == PROFILE_SCREEN:
+            self.plotProfile.clear()
+
             from colour import Color
             blue, red = Color(hex="#dedeff"), Color('red')
             colors = blue.range_to(red, 255)
@@ -246,102 +314,106 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             scale_x = self.blueberry.mm_per_pixel[0]
             scale_y = self.blueberry.mm_per_pixel[1]
             image.setTransform(QTransform().scale(scale_x, scale_y).translate(-400,-400))
-            #image.setTransform(QTransform().translate(-40, -40))
 
-            if self.profile is not None:
-                self.gridProfile.removeWidget(self.profile)
-            gview = pg.GraphicsView()
-            glayout = pg.GraphicsLayout(border=(255,255,255))
-            gview.setCentralItem(glayout)
-            plot = glayout.addPlot(title="Beam Profile")
-            plot.showGrid(x=True, y=True)
-            plot.setLabel('left', 'Vertical', 'mm')
-            plot.setLabel('bottom', 'Horizontal', 'mm')
-            plot.setXRange(-20, 20)
-            plot.setYRange(-20, 20)
-            plot.addItem(image)
-
-            txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[1]:.2f}) mm\nSize: ({additional_curves[2]:.2f}, {additional_curves[3]:.2f}) mm"
-            text = pg.TextItem(text=txt_pos, color=(0,0,0))
-            text.setPos(-15,15)
-            plot.addItem(text)
-
-            self.beamx_size.append(additional_curves[2])
-            self.beamy_size.append(additional_curves[3])
-
-            self.profile = gview
-            self.profile.setBackground('w')
-            self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
-            self.gridProfile.addWidget(self.profile)
-            #self.wProfile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
+            self.plotProfile.addItem(image)
+            txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[1]:.2f}) mm  Size: ({additional_curves[2]:.2f}, {additional_curves[3]:.2f}) mm"
+            self.labelPosition.setText(txt_pos)
 
             self.filtered_images.append(np.array(graphics))
             self.update_table(self.lineFieldGradient.text(), additional_curves[2], additional_curves[3], self.images_names[-1])
-
         elif target == XSIZE_SCREEN:
-            if self.beamx is not None:
-                self.gridBeamSizeX.removeWidget(self.beamx)
-            plot = pg.PlotWidget(title="Horizontal axis intensity")
-            plot.showGrid(x=True, y=True)
-            plot.setLabel('left', 'Intensity', '%')
-            plot.setLabel('bottom', 'Horizontal', 'mm')
-            x1 = []
-            y1 = []
-            for value in graphics:
-                x1.append(value[0])
-                y1.append(value[1])
-            plot.setXRange(min(x1),max(x1))
-            plot.setYRange(min(y1), max(y1)+5)
-
-            plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
-            if additional_curves is not None:
-                if len(additional_curves) > 0:
-                    x2, y2 = [], []
-                    for value in additional_curves:
-                        x2.append(value[0])
-                        y2.append(value[1])
-                    plot.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))
-            plot.setBackground('w')
-
-            self.beamx = plot
-            self.beamx.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
-            self.gridBeamSizeX.addWidget(self.beamx)
-            #self.wBeamSizeX.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
-        
-        elif target == YSIZE_SCREEN:
-            if self.beamy is not None:
-                self.gridBeamSizeY.removeWidget(self.beamy)
-            plot = pg.PlotWidget(title="Vertical axis intensity")
-            plot.showGrid(x=True, y=True)
-            plot.setLabel('left', 'Intensity', '%')
-            plot.setLabel('bottom', 'Vertical', 'mm')
-            plot.setYRange(0, 100)
+            self.plotProfileX.clear()
             x1, y1 = [], []
             for value in graphics:
                 x1.append(value[0])
                 y1.append(value[1])
-            plot.setXRange(min(x1),max(x1))
-            plot.setYRange(min(y1), max(y1)+5)
-
-            plot.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
+            self.plotProfileX.setXRange(min(x1),max(x1))
+            self.plotProfileX.setYRange(min(y1), max(y1)+5)
+            self.plotProfileX.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
                 if len(additional_curves) > 0:
                     x2, y2 = [], []
                     for value in additional_curves:
                         x2.append(value[0])
                         y2.append(value[1])
-                    plot.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))
+            self.plotProfileX.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))        
+        elif target == YSIZE_SCREEN:
+            self.plotProfileY.clear()
+            x1, y1 = [], []
+            for value in graphics:
+                x1.append(value[0])
+                y1.append(value[1])
+            self.plotProfileY.setXRange(min(x1),max(x1))
+            self.plotProfileY.setYRange(min(y1), max(y1)+5)
 
-            plot.setBackground('w')
-
-            self.beamy = plot
-            #self.beamy.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
-            self.beamy.resize(408, 126)
-            self.gridBeamSizeY.addWidget(self.beamy)
-
-            #self.wBeamSizeY.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
+            self.plotProfileY.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
+            if additional_curves is not None:
+                if len(additional_curves) > 0:
+                    x2, y2 = [], []
+                    for value in additional_curves:
+                        x2.append(value[0])
+                        y2.append(value[1])
+                    self.plotProfileY.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))
         else:
             return
 
         if any(target == i for i in [XSIZE_SCREEN, YSIZE_SCREEN, PROFILE_SCREEN]):
             self.image_size = [self.wViewer.width(), self.wViewer.height()]
+
+    @Slot(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
+    def save_pretty_plot(self, transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline):
+        transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        mm_per_pixel = self.blueberry.mm_per_pixel
+        #transformed_image = cv2.resize(transformed_image, dsize=(400,400), interpolation=cv2.INTER_LINEAR)
+        gridspec = GridSpec(nrows=2, ncols=2, width_ratios=[4,1], height_ratios=[1,4], wspace=0.025, hspace=0.025)
+
+        plt.rcParams['figure.figsize'] = (4.687, 4.687)
+
+        plt.subplot(gridspec[1,0])
+        plt.tick_params(axis='both', direction='in')
+        plt.xlabel(r"Horizontal Axis [mm]")
+        plt.ylabel(r"Vertical Axis [mm]")
+        
+        xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
+        xcenter, ycenter = xbin[xmax], ybin[ymax]
+        xlength, ylength = len(np.where(xhist_percent > 32)[0]) * mm_per_pixel[0], len(np.where(yhist_percent > 32)[0]) * mm_per_pixel[1]
+        
+        plt.xlim(min(xbin), max(xbin))
+        plt.ylim(min(ybin), max(ybin))
+        #plt.hist(xhist_percent, bins=transformed_image.shape[0])
+        #plt.hist2d(xhist_percent, yhist_percent, bins=[transformed_image.shape[0], transformed_image.shape[1]])
+        plt.axvline(x=0, color='#0ffc03', linestyle=(0, (3.5, 2.5)), linewidth=0.6, zorder=3)
+        plt.axhline(y=0, color='#0ffc03', linestyle=(0, (3.5, 2.5)), linewidth=0.6, zorder=2)
+        plt.axvline(x=xcenter, color='#d703fc', linestyle='solid', linewidth=0.6, zorder=4)
+        plt.axhline(y=ycenter, color='#d703fc', linestyle='solid', linewidth=0.6, zorder=5)
+        #plt.imshow(transformed_image, extent=(min()), interpolation='nearest', aspect='auto', zorder=1, cmap='gray')
+        plt.imshow(transformed_image, extent=(min(xbin), max(xbin), min(ybin), max(ybin)), interpolation='nearest', aspect='auto', cmap=plt.cm.jet)
+        #plt.hist2d(xbin, ybin, weights=transformed_image.flatten())#, cmap=plt.cm.jet)
+        #yplt.imshow(transformed_image)
+        txt_pos = f"Center: {xcenter:.2f}, {ycenter:.2f} mm\nSize($1\sigma$): {xlength:.2f}, {ylength:.2f} mm"
+        plt.text(min(xbin)+abs(min(xbin))*0.15, max(ybin)-max(ybin)*0.3, txt_pos, color='#ffff14')
+
+        plt.subplot(gridspec[0,0])
+        plt.tick_params(axis='both', direction='in')
+        plt.gca().axes.xaxis.set_ticklabels([])
+        plt.gca().axes.yaxis.set_ticklabels([])
+
+        plt.axvline(x=0, color='#0ffc03', linestyle='dashed', linewidth=0.6, zorder=1)
+        plt.axvline(x=xcenter, color='#d703fc', linestyle='solid', linewidth=0.6, zorder=2)
+        plt.plot(xbin, xhist_percent, color='#000000', zorder=3)
+        plt.plot(xbin, [i[1] for i in xfitline], color='#ff0000', zorder=4)
+
+        plt.subplot(gridspec[1,1])
+        plt.tick_params(axis='both', direction='in')
+        plt.gca().axes.xaxis.set_ticklabels([])
+        plt.gca().axes.yaxis.set_ticklabels([])
+
+        plt.axhline(y=0, color='#0ffc03', linestyle='dashed', linewidth=0.6, zorder=1)
+        plt.axhline(y=ycenter, color='#d703fc', linestyle='solid', linewidth=0.6, zorder=2)
+        plt.plot(yhist_percent, ybin, color='#000000', zorder=3)
+        plt.plot([i[1] for i in yfitline], ybin, color='#ff0000', zorder=4)
+        #plt.hist(yhist_percent, bins=transformed_image.shape[1], orientation=u'vertical')
+        
+        outdir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'output', datetime.datetime.today().strftime('%y%m%d'))
+        plt.savefig(os.path.join(outdir, 'profile', f'BeamProfile_{self.images_names[-1].split("/")[-1]}.pdf'))
+        plt.close()
