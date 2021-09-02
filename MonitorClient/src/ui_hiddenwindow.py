@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+import os
 
 from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
@@ -15,11 +16,13 @@ from PySide6.QtWidgets import *  # type: ignore
 
 class Ui_HiddenWindow(object):
     def setupUi(self, CloseServer):
+        base_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+
         if not CloseServer.objectName():
             CloseServer.setObjectName(u"CloseServer")
         CloseServer.resize(400, 70)
         icon = QIcon()
-        icon.addFile(u"../icons/ncc.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)
         CloseServer.setWindowIcon(icon)
         self.gridLayout = QGridLayout(CloseServer)
         self.gridLayout.setObjectName(u"gridLayout")

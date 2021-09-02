@@ -1,6 +1,7 @@
 import os, sys
 import logging
 import datetime
+import yaml
 
 import numpy as np
 import cv2
@@ -32,6 +33,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
 
         self.dialog = False
+
+        base_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+        self.iconRedLight = QIcon(os.path.join(base_path, 'icons', 'redlight.png'))
+        self.iconGreenLight = QIcon(os.path.join(base_path, 'icons', 'greenlight.png'))
+        self.iconSize = QSize(20,20)
+
+        self.camera_connected = False
+        self.controller_connected = False
+        self.calibrated = False
 
         self.__password = "profile"
         self.blackberry = Blackberry()
@@ -79,9 +89,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.keyHidden = QShortcut(QKeySequence('Ctrl+F10'), self)
         self.keyHidden.activated.connect(self.close_server)
         # Network connection
-        self.checkConnectController.clicked.connect(lambda: self.set_checked(self.checkConnectController, self.blackberry.connected))
-        self.checkConnectCamera.clicked.connect(lambda: self.set_checked(self.checkConnectCamera, self.blueberry.connected))
-        self.pushReconnect.clicked.connect(self.initialize)
+        #elf.checkConnectController.clicked.connect(lambda: self.set_checked(self.checkConnectController, self.blackberry.connected))
+        #self.checkConnectCamera.clicked.connect(lambda: self.set_checked(self.checkConnectCamera, self.blueberry.connected))
 
         # Camera Setup
         self.pushSetup.clicked.connect(self.setup_camera)
@@ -117,22 +126,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             checkbox.setCheckable(False)
 
     def initialize(self):
-        # Connection between raspberry pi, camera and mainwindow
-        self.connect_network(self.blackberry, self.checkConnectController)
-        self.connect_network(self.blueberry, self.checkConnectCamera)
-
         self.parameter_signal.emit(CAMERA_FPS, self.sliderFrameRate.value())
         self.parameter_signal.emit(CAMERA_REPEAT, self.sliderRepeat.value())
         self.parameter_signal.emit(CAMERA_GAIN, 100)
         self.parameter_signal.emit(CAMERA_EXPOSURE_TIME, 500)
         
+        self.labelCameraPixmap.setPixmap(self.iconRedLight.pixmap(self.iconSize))
+        self.labelControllerPixmap.setPixmap(self.iconRedLight.pixmap(self.iconSize))
+        self.labelCalibrationPixmap.setPixmap(self.iconRedLight.pixmap(self.iconSize))
+
         bluePen = pg.mkPen(color=(0,0,255), width=1)
 
         self.plotLiveX = pg.PlotWidget()
         self.plotLiveX.showGrid(x=True, y=True)
         self.plotLiveX.setLabel('bottom', 'Horizontal')
         self.liveXCurve = self.plotLiveX.plot(pen=bluePen)
-        #self.plotLiveX.resize(self.frameLiveXProfile.width(), self.frameLiveXProfile.height())
         self.gridLiveXProfile.addWidget(self.plotLiveX)
 
         self.plotLiveY = pg.PlotWidget()
@@ -162,29 +170,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plotProfileY.setLabel('bottom', 'Vertical', 'mm')
         self.gridBeamSizeY.addWidget(self.plotProfileY)
 
-        self.blueberry.start()
-
-    def connect_network(self, berry, checkbox):
-        if berry.connected: return
-        berry.initialize()
-        self.logger.info(f"Try to connect to {berry.name}...")
-        if berry.connected:
-            self.logger.info("Connection is succeed")
-        else:
-            self.logger.error(f"Connection is failed. Please, reconnect to {berry.name}...")
-        self.set_checked(checkbox, berry.connected)
-
     def setup_camera(self):
         if self.dialog: return
-        setup = SetupWindow(self, self.last_picture)
+        setup = SetupWindow(self)
         r = setup.return_para()
         if r:
-            self.blueberry.do_transformation = True
-            self.blueberry.transform_points = setup.original_points
-            self.blueberry.destination_points = setup.destination_points
-            self.blueberry.mm_per_pixel = setup.mm_per_pixel
+            if setup.camera_connected:
+                self.camera_connected = True
+                self.labelCameraPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
+            if setup.controller_connected:
+                self.controller_connected = True
+                self.labelControllerPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
+            if setup.calibrated:
+                self.calibrated = True
+                self.labelCalibrationPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
+                self.blueberry.do_transformation = True
+                self.blueberry.transform_points = setup.original_points
+                self.blueberry.destination_points = setup.destination_points
+                self.blueberry.mm_per_pixel = setup.mm_per_pixel
+
             self.blueberry.filter_code = setup.filter_code
             self.blueberry.filter_para = setup.filter_para
+
+            if self.blueberry.connected:
+                self.blueberry.start()
 
         self.dialog = False
 
@@ -212,7 +221,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         r = hidden.return_para()
         if r and hidden.password == self.__password:
             self.logger.info("Close Controller Server")
-            self.checkConnectController.setCheckable(False)
             self.blackberry.send_command('quit')
 
     def open_image(self):

@@ -31,20 +31,21 @@ class Blueberry(QThread):
     save_signal = Signal(str)
     plot_signal = Signal(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
 
+    send_signal_to_setup = Signal(int, list)
+
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
         self.connected = False
         self.name = "Network Camera"
 
-        self.url = "http://192.168.3.25:8080/shot.jpg"
-
-        self.camera = Camera()
+        self.camera = None
+        self.address = '0.0.0.0'
+        self.port = 8000
 
         self.image = None
         self.original_image = None
         self.last_picture = None
-
 
         self.filter_code = None
         self.filter_para = {}
@@ -70,7 +71,10 @@ class Blueberry(QThread):
         self.save_signal.connect(self.parent.save_image)
         self.plot_signal.connect(self.parent.save_pretty_plot)
 
-    def initialize(self):
+    def initialize(self, addr, port):
+        self.address = addr
+        self.port = port
+
         self.outdir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'output', datetime.datetime.today().strftime('%y%m%d'))
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
@@ -80,13 +84,23 @@ class Blueberry(QThread):
             os.makedirs(os.path.join(self.outdir, 'profile'))
         if not os.path.exists(os.path.join(self.outdir, 'emittance')):
             os.makedirs(os.path.join(self.outdir, 'emittance'))
-        
-        self.connected = self.camera.connect_camera(self.url)
-        if not self.connected:
-            self.thread_logger_signal.emit('ERROR', str("There is no connected camera"))
+
+        self.sdk = 'Test'
+        if self.sdk == "OpenCV":
+            from src.android import Camera
+            self.camera = Camera()
+        elif self.sdk == "Vimba":
+            from src.alliedvision import Camera
+            self.camera = Camera()
+        else:
+            from src.testcamera import Camera
+            self.camera = Camera()
+
+        self.connected = self.camera.connect_camera(addr, port)
 
     def run(self):
         while self.working:
+            if not self.connected: continue
             self.camera.idx = self.idx
             if self.idx == CAMERA_EXIT:
                 self.sleep(1)
@@ -164,7 +178,7 @@ class Blueberry(QThread):
             outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
             cv2.imwrite(outname, self.last_picture)
             self.save_signal.emit(outname)
-            transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline = self.analyze_picture()
+            transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline = self.analyze_picture(shot=True)
             xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
             xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
             ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]  
@@ -195,8 +209,10 @@ class Blueberry(QThread):
         ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]
         self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(xbin, xhist_percent)), [xbin[xmax], xlength])
         self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(ybin, yhist_percent)), [ybin[ymax], ylength])
+
+        self.msleep(int((1.0/self.frame)*1000))
     
-    def analyze_picture(self, image=None):
+    def analyze_picture(self, image=None, shot=False):
         if image is None:
             image = self.last_picture
         elif str(type(image)) == "<class 'str'>":
@@ -226,24 +242,35 @@ class Blueberry(QThread):
         xhist_percent = np.asarray(xhist)/max(xhist) * 100
         yhist_percent = np.asarray(yhist)/max(yhist) * 100
         
-        try:
-            xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)
-            xfit = gauss(xbin, *xfitpara)
-            xfitline = list(zip(xbin, xfit))
-        except:
+        if shot:
+            try:
+                xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)
+                xfit = gauss(xbin, *xfitpara)
+                xfitline = list(zip(xbin, xfit))
+            except:
+                xfitline = list(zip(xbin, [0 for i in range(len(xbin))]))
+            try:
+                yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
+                yfit = gauss(ybin, *yfitpara)
+                yfitline = list(zip(ybin, yfit))
+            except:
+                yfitline = list(zip(xbin, [0 for i in range(len(ybin))]))
+        else:
             xfitline = list(zip(xbin, [0 for i in range(len(xbin))]))
-        try:
-            yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
-            yfit = gauss(ybin, *yfitpara)
-            yfitline = list(zip(ybin, yfit))
-        except:
-            yfitline = list(zip(xbin, [0 for i in range(len(ybin))]))
-        
+            yfitline = list(zip(ybin, [0 for i in range(len(ybin))]))
+
         xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
         xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
         ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]  
         
         return transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline
+
+    @Slot(int, list)
+    def receive_signal_from_setup(self, idx, value):
+        print("RECEIVE")
+        if idx == CONNECT_CAMERA:
+            self.connect_camera()
+        print("ABCD")
 
     @Slot(int, int)
     def receive_signal(self, idx, value):

@@ -12,6 +12,7 @@ from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
 
+
 class Ui_CalibrationWindow(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
@@ -24,45 +25,6 @@ class Ui_CalibrationWindow(object):
         Dialog.setSizePolicy(sizePolicy)
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.frameOrigin = QFrame(Dialog)
-        self.frameOrigin.setObjectName(u"frameOrigin")
-        self.frameOrigin.setMinimumSize(QSize(450, 450))
-        self.frameOrigin.setMaximumSize(QSize(450, 450))
-        self.frameOrigin.setFrameShape(QFrame.StyledPanel)
-        self.frameOrigin.setFrameShadow(QFrame.Raised)
-        self.gridLayout_2 = QGridLayout(self.frameOrigin)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.labelOrigin = QLabel(self.frameOrigin)
-        self.labelOrigin.setObjectName(u"labelOrigin")
-        self.labelOrigin.setMinimumSize(QSize(450, 450))
-        self.labelOrigin.setMaximumSize(QSize(450, 450))
-        self.labelOrigin.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout_2.addWidget(self.labelOrigin, 0, 1, 1, 1)
-
-
-        self.gridLayout.addWidget(self.frameOrigin, 1, 0, 1, 1)
-
-        self.frameTrans = QFrame(Dialog)
-        self.frameTrans.setObjectName(u"frameTrans")
-        self.frameTrans.setMinimumSize(QSize(450, 450))
-        self.frameTrans.setMaximumSize(QSize(450, 450))
-        self.frameTrans.setFrameShape(QFrame.StyledPanel)
-        self.frameTrans.setFrameShadow(QFrame.Raised)
-        self.gridLayout_3 = QGridLayout(self.frameTrans)
-        self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.labelTrans = QLabel(self.frameTrans)
-        self.labelTrans.setObjectName(u"labelTrans")
-        self.labelTrans.setMinimumSize(QSize(450, 450))
-        self.labelTrans.setMaximumSize(QSize(450, 450))
-
-        self.gridLayout_3.addWidget(self.labelTrans, 0, 0, 1, 1)
-
-
-        self.gridLayout.addWidget(self.frameTrans, 1, 1, 1, 4)
-
         self.gridLayout_4 = QGridLayout()
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.label_7 = QLabel(Dialog)
@@ -152,25 +114,69 @@ class Ui_CalibrationWindow(object):
         self.gridLayout_4.addWidget(self.label_6, 3, 4, 1, 1)
 
 
-        self.gridLayout.addLayout(self.gridLayout_4, 2, 1, 1, 4)
+        self.gridLayout.addLayout(self.gridLayout_4, 2, 4, 1, 3)
 
-        self.pushOpen = QPushButton(Dialog)
-        self.pushOpen.setObjectName(u"pushOpen")
-        self.pushOpen.setFocusPolicy(Qt.ClickFocus)
+        self.pushCancel = QPushButton(Dialog)
+        self.pushCancel.setObjectName(u"pushCancel")
+        self.pushCancel.setFocusPolicy(Qt.ClickFocus)
 
-        self.gridLayout.addWidget(self.pushOpen, 0, 2, 1, 1)
+        self.gridLayout.addWidget(self.pushCancel, 3, 6, 1, 1)
 
-        self.pushConvert = QPushButton(Dialog)
-        self.pushConvert.setObjectName(u"pushConvert")
-        self.pushConvert.setFocusPolicy(Qt.ClickFocus)
+        self.label_10 = QLabel(Dialog)
+        self.label_10.setObjectName(u"label_10")
 
-        self.gridLayout.addWidget(self.pushConvert, 3, 2, 1, 1)
+        self.gridLayout.addWidget(self.label_10, 0, 2, 1, 2)
 
         self.pushOk = QPushButton(Dialog)
         self.pushOk.setObjectName(u"pushOk")
         self.pushOk.setFocusPolicy(Qt.ClickFocus)
 
-        self.gridLayout.addWidget(self.pushOk, 3, 3, 1, 1)
+        self.gridLayout.addWidget(self.pushOk, 3, 5, 1, 1)
+
+        self.frameTrans = QFrame(Dialog)
+        self.frameTrans.setObjectName(u"frameTrans")
+        self.frameTrans.setMinimumSize(QSize(450, 450))
+        self.frameTrans.setMaximumSize(QSize(450, 450))
+        self.frameTrans.setFrameShape(QFrame.StyledPanel)
+        self.frameTrans.setFrameShadow(QFrame.Raised)
+        self.gridLayout_3 = QGridLayout(self.frameTrans)
+        self.gridLayout_3.setObjectName(u"gridLayout_3")
+        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.labelTrans = QLabel(self.frameTrans)
+        self.labelTrans.setObjectName(u"labelTrans")
+        self.labelTrans.setMinimumSize(QSize(450, 450))
+        self.labelTrans.setMaximumSize(QSize(450, 450))
+
+        self.gridLayout_3.addWidget(self.labelTrans, 0, 0, 1, 1)
+
+
+        self.gridLayout.addWidget(self.frameTrans, 1, 4, 1, 3)
+
+        self.frameOrigin = QFrame(Dialog)
+        self.frameOrigin.setObjectName(u"frameOrigin")
+        self.frameOrigin.setMinimumSize(QSize(450, 450))
+        self.frameOrigin.setMaximumSize(QSize(450, 450))
+        self.frameOrigin.setFrameShape(QFrame.StyledPanel)
+        self.frameOrigin.setFrameShadow(QFrame.Raised)
+        self.gridLayout_2 = QGridLayout(self.frameOrigin)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.labelOrigin = QLabel(self.frameOrigin)
+        self.labelOrigin.setObjectName(u"labelOrigin")
+        self.labelOrigin.setMinimumSize(QSize(450, 450))
+        self.labelOrigin.setMaximumSize(QSize(450, 450))
+        self.labelOrigin.setFocusPolicy(Qt.ClickFocus)
+
+        self.gridLayout_2.addWidget(self.labelOrigin, 0, 1, 1, 1)
+
+
+        self.gridLayout.addWidget(self.frameOrigin, 1, 0, 1, 4)
+
+        self.pushOpen = QPushButton(Dialog)
+        self.pushOpen.setObjectName(u"pushOpen")
+        self.pushOpen.setFocusPolicy(Qt.ClickFocus)
+
+        self.gridLayout.addWidget(self.pushOpen, 0, 0, 1, 1)
 
         self.gridLayout_5 = QGridLayout()
         self.gridLayout_5.setObjectName(u"gridLayout_5")
@@ -190,30 +196,18 @@ class Ui_CalibrationWindow(object):
         self.gridLayout_5.addWidget(self.labelPosition, 2, 0, 1, 2)
 
 
-        self.gridLayout.addLayout(self.gridLayout_5, 2, 0, 1, 1)
+        self.gridLayout.addLayout(self.gridLayout_5, 2, 0, 1, 4)
 
-        self.pushCancel = QPushButton(Dialog)
-        self.pushCancel.setObjectName(u"pushCancel")
-        self.pushCancel.setFocusPolicy(Qt.ClickFocus)
+        self.pushConvert = QPushButton(Dialog)
+        self.pushConvert.setObjectName(u"pushConvert")
+        self.pushConvert.setFocusPolicy(Qt.ClickFocus)
 
-        self.gridLayout.addWidget(self.pushCancel, 3, 4, 1, 1)
+        self.gridLayout.addWidget(self.pushConvert, 3, 4, 1, 1)
 
-        self.pushSave = QPushButton(Dialog)
-        self.pushSave.setObjectName(u"pushSave")
-        sizePolicy1.setHeightForWidth(self.pushSave.sizePolicy().hasHeightForWidth())
-        self.pushSave.setSizePolicy(sizePolicy1)
-        self.pushSave.setFocusPolicy(Qt.ClickFocus)
+        self.label_9 = QLabel(Dialog)
+        self.label_9.setObjectName(u"label_9")
 
-        self.gridLayout.addWidget(self.pushSave, 0, 1, 1, 1)
-
-        self.comboCalibration = QComboBox(Dialog)
-        self.comboCalibration.addItem("")
-        self.comboCalibration.setObjectName(u"comboCalibration")
-        sizePolicy1.setHeightForWidth(self.comboCalibration.sizePolicy().hasHeightForWidth())
-        self.comboCalibration.setSizePolicy(sizePolicy1)
-        self.comboCalibration.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout.addWidget(self.comboCalibration, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.label_9, 0, 1, 1, 1)
 
 
         self.retranslateUi(Dialog)
@@ -223,8 +217,6 @@ class Ui_CalibrationWindow(object):
 
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(QCoreApplication.translate("Dialog", u"Calibration", None))
-        self.labelOrigin.setText("")
-        self.labelTrans.setText("")
         self.label_7.setText(QCoreApplication.translate("Dialog", u"Horizontal:", None))
         self.label_3.setText(QCoreApplication.translate("Dialog", u"x", None))
         self.label_8.setText(QCoreApplication.translate("Dialog", u"Vertical:", None))
@@ -232,15 +224,16 @@ class Ui_CalibrationWindow(object):
         self.label.setText(QCoreApplication.translate("Dialog", u"Pixel to actual length of original image", None))
         self.label_4.setText(QCoreApplication.translate("Dialog", u"mm/pixel", None))
         self.label_6.setText(QCoreApplication.translate("Dialog", u"mm/pixel", None))
-        self.pushOpen.setText(QCoreApplication.translate("Dialog", u"Open", None))
-        self.pushConvert.setText(QCoreApplication.translate("Dialog", u"Convert", None))
+        self.pushCancel.setText(QCoreApplication.translate("Dialog", u"Cancel", None))
+        self.label_10.setText("")
         self.pushOk.setText(QCoreApplication.translate("Dialog", u"Ok", None))
+        self.labelTrans.setText("")
+        self.labelOrigin.setText("")
+        self.pushOpen.setText(QCoreApplication.translate("Dialog", u"Open", None))
         self.label_5.setText(QCoreApplication.translate("Dialog", u"Ctrl + arrow keys: Move last point", None))
         self.labelExplain.setText(QCoreApplication.translate("Dialog", u"Left click: Add point,  Right click: Erase point", None))
         self.labelPosition.setText(QCoreApplication.translate("Dialog", u"Position:", None))
-        self.pushCancel.setText(QCoreApplication.translate("Dialog", u"Cancel", None))
-        self.pushSave.setText(QCoreApplication.translate("Dialog", u"Save", None))
-        self.comboCalibration.setItemText(0, "")
-
+        self.pushConvert.setText(QCoreApplication.translate("Dialog", u"Convert", None))
+        self.label_9.setText("")
     # retranslateUi
 

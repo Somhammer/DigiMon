@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+import os
 
 from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
@@ -15,9 +16,14 @@ from PySide6.QtWidgets import *  # type: ignore
 
 class Ui_EmittanceWindow(object):
     def setupUi(self, Dialog):
+        base_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
         Dialog.resize(1128, 890)
+        icon = QIcon()
+        icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)
+        Dialog.setWindowIcon(icon)
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName(u"gridLayout")
         self.verticalLayout = QVBoxLayout()
