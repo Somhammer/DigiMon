@@ -189,6 +189,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.blueberry.destination_points = setup.destination_points
                 self.blueberry.mm_per_pixel = setup.mm_per_pixel
 
+            self.blueberry.gain = setup.gain
+            self.blueberry.exposure_time = setup.exposure_time
+            self.blueberry.ROI = setup.ROI
             self.blueberry.filter_code = setup.filter_code
             self.blueberry.filter_para = setup.filter_para
 

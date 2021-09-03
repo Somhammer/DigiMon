@@ -18,21 +18,41 @@ from src.variables import *
 from src.ui_setupwindow import Ui_SetupWindow
 
 class DigiLabel(QLabel):
+    clicked = Signal()
+    move = Signal()
+    dclicked = Signal()
     def __init__(self, parent):
         super(DigiLabel, self).__init__(parent)
-
+        #self.setMouseTracking(True)
         self.x = None
         self.y = None
         self.left = None
 
+        self.x_end = None
+        self.y_end = None
+
     def mousePressEvent(self, event):
         self.x = event.x()
         self.y = event.y()
+        self.x_end = event.x()
+        self.y_end = event.y()
+
         if event.button() == Qt.RightButton:
             self.left = False
         elif event.button() == Qt.LeftButton:
             self.left = True
 
+    def mouseMoveEvent(self, event):
+        self.x_end = event.x()
+        self.y_end = event.y()
+        self.move.emit()
+        
+    def mouseReleaseEvent(self, event):
+        self.clicked.emit()
+
+    def mouseDoubleClickEvent(self, event):
+        self.dclicked.emit()
+        
 class SetupWindow(QDialog, Ui_SetupWindow):
     send_signal_to_blueberry = Signal(int, int)
     logger_signal = Signal(str, str)
@@ -50,6 +70,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.logger.addHandler(handler)
 
         self.labelOrigin = DigiLabel(self.labelOrigin)
+        self.labelImage = DigiLabel(self.labelImage)
 
         self.ratio_width = self.ratio_height = 1
 
@@ -88,25 +109,19 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.sliderHeight.setSingleStep(1)
     
     # Common Methods
-    def clickable(self, widget):
-        class Filter(QObject):
-            clicked = Signal()
-            def eventFilter(self, obj, event):
-                if obj == widget:
-                    if event.type() == QEvent.MouseButtonRelease:
-                        if obj.rect().contains(event.pos()):
-                            self.clicked.emit()
-                            return True
-                return False
-
-        custom_filter = Filter(widget)
-        widget.installEventFilter(custom_filter)
-        return custom_filter.clicked
-
     def initialize_parameter(self):
-        self.camera_connected = self.controller_connected = self.photo_setup = self.calibrated = False
+        self.camera_connected = self.controller_connected = self.photo_setup = self.select_ROI = self.calibrated = False
 
         self.camera_sdk = None
+
+        self.backup_image = None
+
+        self.captured_image = None
+        self.calibration_image = None
+        self.calibration_image_name = ""
+
+        self.resized_capimage = None
+        self.resized_calimage = None
 
         self.gain = 100
         self.exposure_time = 500
@@ -114,7 +129,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.filter_code = self.filter_para = None
 
-        self.calibration_image = ""
         self.original_points = self.destination_points = self.resized_points = self.mm_per_pixel = []
 
     def set_checked(self, checkbox, state):
@@ -161,7 +175,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushConnectController.clicked.connect(lambda: self.connect_network(self.parent.blackberry, self.checkControllerConnected))
 
         # Photo
-        self.clickable(self.labelImage).connect(self.draw_rectangle)
+        self.labelImage.move.connect(self.set_ROI)
+        self.labelImage.dclicked.connect(self.draw_ROI)
 
         self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
         self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
@@ -176,7 +191,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushFilterApply.clicked.connect(self.draw_image)
 
         # Calibration
-        self.clickable(self.labelOrigin).connect(self.draw_circle)
+        self.labelOrigin.clicked.connect(self.draw_circle)
 
         def set_linevalue(width, height):
             if width == '': width = 1.0
@@ -216,7 +231,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             ROI: {str(self.ROI)}            
             FilterType: "{self.comboFilter.currentText()}"
             FilterParameter: {str(self.filter_para)}
-            Image: "{self.calibration_image}"
+            Image: "{self.calibration_image_name}"
             Original: {str(self.original_points)}
             Destination: {str(self.destination_points)}
             PixelLength: {str(self.mm_per_pixel)}
@@ -282,7 +297,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                             widget.linevalue.setText(str(value))
                 self.draw_image()
 
-                self.calibration_image = str(cfg['Image'])
+                self.calibration_image_name = str(cfg['Image'])
                 self.original_points = cfg['Original']
                 self.destination_points = cfg['Destination']
                 self.mm_per_pixel = cfg['PixelLength']
@@ -309,13 +324,13 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             if berry.address == url and berry.port == port.text():
                 self.set_checked(checkbox, berry.connected)
                 if berry.name == "Network Camera":
-                    self.image = self.parent.blueberry.camera.take_a_picture()
+                    self.captured_image = self.parent.blueberry.camera.take_a_picture()
 
-                    height, width, channel = self.image.shape
-                    qImg = QImage(self.image.data, width, height, width*channel, QImage.Format_BGR888)
+                    height, width, channel = self.captured_image.shape
+                    qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
                     pixmap = QPixmap.fromImage(qImg)
-                    self.pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-                    self.labelImage.setPixmap(self.pixmap)
+                    pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
+                    self.labelImage.setPixmap(pixmap)
                 return
 
         if port.text() != '':
@@ -331,13 +346,14 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.set_checked(checkbox, berry.connected)
 
         if berry.name == "Network Camera":
-            self.image = self.parent.blueberry.camera.take_a_picture()
+            self.captured_image = self.parent.blueberry.camera.take_a_picture()
+            self.backup_image = self.captured_image.copy()
 
-            height, width, channel = self.image.shape
-            qImg = QImage(self.image.data, width, height, width*channel, QImage.Format_BGR888)
+            height, width, channel = self.captured_image.shape
+            qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
             pixmap = QPixmap.fromImage(qImg)
-            self.pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-            self.labelImage.setPixmap(self.pixmap)
+            pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
+            self.labelImage.setPixmap(pixmap)
 
     ### Methods for Photo
     def set_photo_para(self, idx):
@@ -351,29 +367,33 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.lineExposureTime.setText(str(self.sliderExposureTime.value()))
                 self.send_signal_to_blueberry.emit(idx, self.exposure_time)
             elif idx == CAMERA_ROI_X0:
-                self.ROI[0][0] = round(self.image.shape[0] * self.sliderX0.value() / 1000.0)
+                self.ROI[0][0] = round(self.captured_image.shape[1] * self.sliderX0.value() / 1000.0)
                 self.lineX0.setText(str(self.sliderX0.value()/10))
                 self.labelSPPixel.setText(f"({self.ROI[0][0]}, {self.ROI[0][1]}) pixel")
+                self.draw_rectangle()
             elif idx == CAMERA_ROI_Y0:
-                self.ROI[0][1] = round(self.image.shape[1] * self.sliderY0.value() / 1000.0)
+                self.ROI[0][1] = round(self.captured_image.shape[0] * self.sliderY0.value() / 1000.0)
                 self.lineY0.setText(str(self.sliderY0.value()/10))
                 self.labelSPPixel.setText(f"({self.ROI[0][0]}, {self.ROI[0][1]}) pixel")
+                self.draw_rectangle()
             elif idx == CAMERA_ROI_WIDTH:
-                self.ROI[1][0] = round(self.image.shape[0] * self.sliderWidth.value() / 1000.0)
+                self.ROI[1][0] = round(self.captured_image.shape[1] * self.sliderWidth.value() / 1000.0)
                 self.lineWidth.setText(str(self.sliderWidth.value()/10))
                 self.labelSizePixel.setText(f"({self.ROI[1][0]}, {self.ROI[1][1]}) pixel")
+                self.draw_rectangle()
             elif idx == CAMERA_ROI_HEIGHT:
-                self.ROI[1][1] = round(self.image.shape[1] * self.sliderHeight.value() / 1000.0)
+                self.ROI[1][1] = round(self.captured_image.shape[0] * self.sliderHeight.value() / 1000.0)
                 self.lineHeight.setText(str(self.sliderHeight.value()/10))
                 self.labelSizePixel.setText(f"({self.ROI[1][0]}, {self.ROI[1][1]}) pixel")
+                self.draw_rectangle()
 
             if (idx == i for i in [CAMERA_GAIN, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
                 if self.camera_connected:
-                    self.image = self.parent.blueberry.camera.take_a_picture()
+                    self.captured_image = self.parent.blueberry.camera.take_a_picture()
                     self.draw_image()
 
     def draw_image(self):
-        image = copy.deepcopy(self.image)
+        image = copy.deepcopy(self.captured_image)
 
         if self.filter_code == BKG_SUBSTRACTION:
             background = cv2.imread(self.filter_para['background file'])
@@ -391,16 +411,67 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             sspace = self.filter_para['sigma space']
             image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
         
-        image = cv2.resize(image, dsize=(self.labelImage.width(), self.labelImage.height()), interpolation=cv2.INTER_LINEAR)
-        height, width, channel = image.shape
-        qImg = QImage(image.data, width, height, width*channel, QImage.Format_BGR888)
+        self.resized_capimage = cv2.resize(image, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
+        height, width, channel = self.resized_capimage.shape
+        qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
         pixmap = QPixmap.fromImage(qImg)
 
         self.labelImage.resize(width, height)
         self.labelImage.setPixmap(pixmap)
 
     def draw_rectangle(self):
-        return
+        if self.select_ROI:
+            self.captured_image = self.backup_image.copy()
+            self.draw_image()
+            self.select_ROI = False
+        if self.resized_capimage is None: return
+        height, width, channel = self.resized_capimage.shape
+        qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        pixmap = QPixmap.fromImage(qImg)
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
+
+        x = self.resized_capimage.shape[1] * self.sliderX0.value() / 1000.0
+        y = self.resized_capimage.shape[0] * self.sliderY0.value() / 1000.0
+        width = self.resized_capimage.shape[1] * self.sliderWidth.value() / 1000.0
+        height = self.resized_capimage.shape[0] * self.sliderHeight.value() / 1000.0
+
+        painter.drawRect(x, y, width, height)
+        painter.end()
+        self.labelImage.setPixmap(pixmap)
+
+    def set_ROI(self):
+        if not self.labelImage.left: return
+        if self.labelImage.x < self.labelImage.x_end and self.labelImage.y < self.labelImage.y_end:
+            x = self.labelImage.x
+            y = self.labelImage.y
+        elif self.labelImage.x > self.labelImage.x_end and self.labelImage.y < self.labelImage.y_end:
+            x = self.labelImage.x_end
+            y = self.labelImage.y
+        elif self.labelImage.x > self.labelImage.x_end and self.labelImage.y > self.labelImage.y_end:
+            x = self.labelImage.x_end
+            y = self.labelImage.y_end
+        else:
+            x = self.labelImage.x
+            y = self.labelImage.y_end
+        width = abs(self.labelImage.x - self.labelImage.x_end)
+        height = abs(self.labelImage.y - self.labelImage.y_end)
+
+        self.sliderX0.setValue(x / self.labelImage.width() * 1000)
+        self.sliderY0.setValue(y / self.labelImage.height() * 1000)
+        self.sliderWidth.setValue(width / self.labelImage.width() * 1000)
+        self.sliderHeight.setValue(height / self.labelImage.height() * 1000)
+
+    def draw_ROI(self):
+        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
+
+        src = self.captured_image.copy()
+        roi = src[y:y+height, x:x+width]
+        self.captured_image = roi
+        roi = cv2.resize(roi, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
+        self.resized_capimage = roi
+        self.draw_image()
+        self.select_ROI = True
 
     def load_filter_parameters(self):
         class Item(QWidget):
@@ -475,14 +546,15 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.resized_points = []
 
     def load_calibrated_image(self):
-        self.set_image(self.calibration_image)
+        self.set_image(self.calibration_image_name)
         if len(self.original_points) > 0:
             for point in self.original_points:
                 x, y = point[0]/self.ratio_width, point[1]/self.ratio_height
                 self.resized_points.append([round(x), round(y)])
 
             halflength = 100
-            painter = QPainter(self.pixmap)
+            pixmap = self.labelOrigin.pixmap()
+            painter = QPainter(pixmap)
             for point in self.resized_points:
                 painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
                 painter.drawLine(point[0]- halflength, point[1], point[0] + halflength, point[1])
@@ -491,8 +563,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 painter.drawPoint(point[0], point[1])
 
             painter.end()
-            self.labelOrigin.setPixmap(self.pixmap)
-            print('Original:', self.original_points, 'Destination:', self.destination_points, 'Resized:', self.resized_points, self.ratio_width, self.ratio_height)
+            self.labelOrigin.setPixmap(pixmap)
 
         if len(self.destination_points) > 1:
             w = round(self.destination_points[2][0] - self.destination_points[0][0])
@@ -508,25 +579,25 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 
     def set_image(self, name):
         if name == "": return
-        self.calibration_image = name
-        self.image_origin = cv2.imread(name)
-        self.image = cv2.resize(self.image_origin, dsize=(450,450), interpolation=cv2.INTER_LINEAR)
-        height, width, channel = self.image.shape
-        self.ratio_width = self.image_origin.shape[1] / width
-        self.ratio_height = self.image_origin.shape[0] / height
-        qImg = QImage(self.image.data, width, height, width*channel, QImage.Format_BGR888)
-        self.pixmap = QPixmap.fromImage(qImg)
-        self.labelOrigin.resize(self.pixmap.width(), self.pixmap.height())
-        self.labelOrigin.setPixmap(self.pixmap)
+        self.calibration_image_name = name
+        self.calibration_image = cv2.imread(name)
+        self.resized_calimage = cv2.resize(self.calibration_image, dsize=(450,450), interpolation=cv2.INTER_LINEAR)
+        height, width, channel = self.resized_calimage.shape
+        self.ratio_width = self.calibration_image.shape[1] / width
+        self.ratio_height = self.calibration_image.shape[0] / height
+        qImg = QImage(self.resized_calimage.data, width, height, width*channel, QImage.Format_BGR888)
+        pixmap = QPixmap.fromImage(qImg)
+        self.labelOrigin.resize(pixmap.width(), pixmap.height())
+        self.labelOrigin.setPixmap(pixmap)
 
     def draw_circle(self):
         self.labelPosition.setText(f"Position: {self.labelOrigin.x}, {self.labelOrigin.y} ({int(self.labelOrigin.x*self.ratio_width)}, {int(self.labelOrigin.y*self.ratio_height)})")
         halflength = 100
-
+        pixmap = self.labelOrigin.pixmap()
         if self.labelOrigin.left:
             if len(self.resized_points) == 4: return
             self.resized_points.append([self.labelOrigin.x, self.labelOrigin.y])
-            painter = QPainter(self.pixmap)
+            painter = QPainter(pixmap)
             painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
             painter.drawLine(self.labelOrigin.x - halflength, self.labelOrigin.y, self.labelOrigin.x + halflength, self.labelOrigin.y)
             painter.drawLine(self.labelOrigin.x, self.labelOrigin.y - halflength, self.labelOrigin.x, self.labelOrigin.y + halflength)
@@ -534,12 +605,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             painter.drawPoint(self.labelOrigin.x, self.labelOrigin.y)
 
             painter.end()
-            self.labelOrigin.setPixmap(self.pixmap)
+            self.labelOrigin.setPixmap(pixmap)
         else:
-            height, width, channel = self.image.shape
-            qImg = QImage(self.image.data, width, height, width*channel, QImage.Format_BGR888)
-            self.pixmap = QPixmap.fromImage(qImg)
-            painter = QPainter(self.pixmap)
+            height, width, channel = self.resized_calimage.shape
+            qImg = QImage(self.resized_calimage.data, width, height, width*channel, QImage.Format_BGR888)
+            pixmap = QPixmap.fromImage(qImg)
+            painter = QPainter(pixmap)
             x,y = 999, 999
             radius = 40
             for point in self.resized_points:
@@ -559,7 +630,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 painter.drawPoint(point[0], point[1])
             
             painter.end()
-            self.labelOrigin.setPixmap(self.pixmap)
+            self.labelOrigin.setPixmap(pixmap)
         
     def move_circle(self, key):
         if len(self.resized_points) < 1:
@@ -567,10 +638,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         halflength = 100
         x, y = self.resized_points[-1][0], self.resized_points[-1][1]
-        height, width, channel = self.image.shape
-        qImg = QImage(self.image.data, width, height, width*channel, QImage.Format_BGR888)
-        self.pixmap = QPixmap.fromImage(qImg)
-        painter = QPainter(self.pixmap)
+        height, width, channel = self.resized_calimage.shape
+        qImg = QImage(self.resized_calimage.data, width, height, width*channel, QImage.Format_BGR888)
+        pixmap = QPixmap.fromImage(qImg)
+        painter = QPainter(pixmap)
 
         last_point = self.resized_points[-1]
         if key == Qt.Key_Right:
@@ -593,7 +664,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             painter.drawPoint(point[0], point[1])
             
         painter.end()
-        self.labelOrigin.setPixmap(self.pixmap)
+        self.labelOrigin.setPixmap(pixmap)
         self.labelPosition.setText(f"Position: {self.resized_points[-1][0]}, {self.resized_points[-1][1]} ({int(self.resized_points[-1][0]*self.ratio_width)}, {int(self.resized_points[-1][1]*self.ratio_height)})")
 
     def convert_image(self):
@@ -607,8 +678,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.original_points = []
             self.original_points.append([int(x), int(y)])
 
-        half_width = self.image_origin.shape[1] / 2
-        half_height = self.image_origin.shape[0] / 2
+        half_width = self.calibration_image.shape[1] / 2
+        half_height = self.calibration_image.shape[0] / 2
 
         upper_left, lower_left, upper_right, lower_right = [0,0], [0,0], [0,0], [0,0]
         for point in self.original_points:
@@ -631,14 +702,14 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         # 좌표: 좌상, 좌하, 우상, 우하
         transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
-        self.transformed_image = cv2.warpPerspective(self.image_origin, transform_matrix, (self.image_origin.shape[1], self.image_origin.shape[0]))
+        self.transformed_image = cv2.warpPerspective(self.calibration_image, transform_matrix, (self.calibration_image.shape[1], self.calibration_image.shape[0]))
 
         self.transformed_image2 = cv2.resize(self.transformed_image, dsize=(450,450), interpolation=cv2.INTER_LINEAR)
         height, width, channel = self.transformed_image2.shape
         qImg = QImage(self.transformed_image2.data, width, height, width*channel, QImage.Format_BGR888)
-        self.pixmap2 = QPixmap.fromImage(qImg)
+        pixmap = QPixmap.fromImage(qImg)
 
-        painter = QPainter(self.pixmap2)
+        painter = QPainter(pixmap)
         painter.setPen(QPen(QColor(178, 54, 245), 4, Qt.DashLine))
         start_point = (self.destination_points[0][0] / self.ratio_width, self.destination_points[0][1] / self.ratio_height)
         width = w / self.ratio_width
@@ -646,8 +717,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         painter.drawRect(start_point[0], start_point[1], width, height)
         painter.end()
 
-        self.labelTrans.resize(self.pixmap2.width(), self.pixmap2.height())
-        self.labelTrans.setPixmap(self.pixmap2)
+        self.labelTrans.resize(pixmap.width(), pixmap.height())
+        self.labelTrans.setPixmap(pixmap)
         self.calibrated = True
 
     ### Methods for close

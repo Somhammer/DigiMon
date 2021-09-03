@@ -19,10 +19,6 @@ import pyqtgraph as pg
 from src.logger import LogStringHandler
 from src.variables import *
 
-#from src.android import Camera
-#from src.alliedvision import Camera
-from src.testcamera import Camera
-
 class Blueberry(QThread):
     thread_signal = Signal(str, list)
     thread_logger_signal = Signal(str, str)
@@ -57,9 +53,12 @@ class Blueberry(QThread):
         self.working = True
 
         self.idx = None
-        self.gain = None
         self.frame = None
+
+        self.gain = None
         self.exposure_time = None
+        self.ROI = [[0,0], [0,0]]
+
         self.repeat = None
         self.rotation = 0
         self.flip_rl = 0
@@ -166,6 +165,13 @@ class Blueberry(QThread):
         
         return transformed_image
 
+    def slice_image(self, image):
+        if self.ROI == [[0,0],[0,0]]: return image
+        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
+        src = image.copy()
+        image = src[y:y+height, x:x+width]
+        return image
+
     def take_pictures(self):
         if not self.connected: return
 
@@ -200,13 +206,15 @@ class Blueberry(QThread):
         self.image = self.camera.take_a_picture()
         self.image = self.rotate_image(self.image)
         self.image = self.filter_image(self.image)
-
-        self.screen_signal.emit(PICTURE_SCREEN, self.image)
+        self.image = self.transform_image(self.image)
+        #self.image = self.slice_image(self.image)
 
         transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline = self.analyze_picture(self.image)
         xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
         xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
         ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]
+
+        self.screen_signal.emit(PICTURE_SCREEN, self.image)
         self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(xbin, xhist_percent)), [xbin[xmax], xlength])
         self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(ybin, yhist_percent)), [ybin[ymax], ylength])
 
@@ -215,13 +223,12 @@ class Blueberry(QThread):
     def analyze_picture(self, image=None, shot=False):
         if image is None:
             image = self.last_picture
-        elif str(type(image)) == "<class 'str'>":
-            image = cv2.imread(image)
         else:
             image = image
         height, width, channel = image.shape
 
-        transformed_image = self.transform_image(image)
+        #transformed_image = self.transform_image(image)
+        transformed_image = image
         transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
         transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_CLOCKWISE)
 
@@ -267,10 +274,8 @@ class Blueberry(QThread):
 
     @Slot(int, list)
     def receive_signal_from_setup(self, idx, value):
-        print("RECEIVE")
         if idx == CONNECT_CAMERA:
             self.connect_camera()
-        print("ABCD")
 
     @Slot(int, int)
     def receive_signal(self, idx, value):
@@ -315,6 +320,6 @@ class Blueberry(QThread):
             self.flip_rl = self.flip_rl % 2
     
     @Slot(str)
-    def redraw_signal(self, image):
-        print(image)
+    def redraw_signal(self, name):
+        image = cv2.imread(name)
         self.analyze_picture(image)
