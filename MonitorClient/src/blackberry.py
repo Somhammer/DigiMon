@@ -13,9 +13,10 @@ class Blackberry():
         self.connected = False
         self.name = "Profile Monitor Controller"
 
-    def initialize(self, addr, port):
-        self.address = addr
-        self.port = port
+    def initialize(self, url):
+        tmp = url.split(':')
+        self.address = tmp[0]
+        self.port = tmp[1]
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             if self.port == '':

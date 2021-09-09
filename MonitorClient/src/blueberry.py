@@ -27,8 +27,6 @@ class Blueberry(QThread):
     save_signal = Signal(str)
     plot_signal = Signal(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
 
-    send_signal_to_setup = Signal(int, list)
-
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
@@ -36,8 +34,7 @@ class Blueberry(QThread):
         self.name = "Network Camera"
 
         self.camera = None
-        self.address = '0.0.0.0'
-        self.port = 8000
+        self.url = None
 
         self.image = None
         self.original_image = None
@@ -49,6 +46,8 @@ class Blueberry(QThread):
         self.do_transformation = False
         self.destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
         self.mm_per_pixel = [1.0, 1.0]
+
+        self.original_pixel = None
 
         self.working = True
 
@@ -70,9 +69,8 @@ class Blueberry(QThread):
         self.save_signal.connect(self.parent.save_image)
         self.plot_signal.connect(self.parent.save_pretty_plot)
 
-    def initialize(self, addr, port):
-        self.address = addr
-        self.port = port
+    def initialize(self, url):
+        self.url = url
 
         self.outdir = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(__file__))), 'output', datetime.datetime.today().strftime('%y%m%d'))
         if not os.path.exists(self.outdir):
@@ -84,18 +82,21 @@ class Blueberry(QThread):
         if not os.path.exists(os.path.join(self.outdir, 'emittance')):
             os.makedirs(os.path.join(self.outdir, 'emittance'))
 
-        self.sdk = 'Test'
-        if self.sdk == "OpenCV":
+        #self.sdk = 'Test'
+        if "OpenCV" in self.sdk:
             from src.android import Camera
             self.camera = Camera()
-        elif self.sdk == "Vimba":
+        elif "Vimba" in self.sdk:
             from src.alliedvision import Camera
+            self.camera = Camera()
+        elif "Pylon" in self.sdk:
+            from src.basler import Camera
             self.camera = Camera()
         else:
             from src.testcamera import Camera
             self.camera = Camera()
 
-        self.connected = self.camera.connect_camera(addr, port)
+        self.msg, self.connected = self.camera.connect_camera(url)
 
     def run(self):
         while self.working:
@@ -154,12 +155,12 @@ class Blueberry(QThread):
         if self.do_transformation:
             width = self.destination_points[2][0] - self.destination_points[0][0]
             height = self.destination_points[1][1] - self.destination_points[0][1]
-            destination_points = [(0,0),(0,height),(width,0),(width,height)]
-            transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), np.float32(destination_points))
+            #destination_points = [(0,0),(0,height),(width,0),(width,height)]
+            transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), np.float32(self.destination_points))
 
             # 단순 perspective transformation은 왜곡이 발생함. -> 실험으로 확인
-            #destination_points = [(0,0), ()]
-            transformed_image = cv2.warpPerspective(image, transform_matrix, (int(width), int(height)))
+            width, height = self.image.shape[1], self.image.shape[0]
+            transformed_image = cv2.warpPerspective(image, transform_matrix, (width, height))
         else:
             transformed_image = image
         
@@ -204,6 +205,9 @@ class Blueberry(QThread):
         if not self.working: return
 
         self.image = self.camera.take_a_picture()
+        self.original_pixel = [self.image.shape[1], self.image.shape[0]]
+
+        # 아래 세 친구의 순서는 어떻게 할 것인가...
         self.image = self.rotate_image(self.image)
         self.image = self.filter_image(self.image)
         self.image = self.transform_image(self.image)
@@ -225,30 +229,37 @@ class Blueberry(QThread):
             image = self.last_picture
         else:
             image = image
-        height, width, channel = image.shape
+    
+        height, width = image.shape
 
-        #transformed_image = self.transform_image(image)
         transformed_image = image
-        transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
-        transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_CLOCKWISE)
+        if len(transformed_image.shape) == 3:
+            transformed_image = cv2.cvtColor(transformed_image, cv2.COLOR_BGR2GRAY)
+        
+        # PyqtGraph에서 90도 돌아져서 그림이 그려져서 돌림...
+        #transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_CLOCKWISE)
 
-        nxpixel, nypixel = transformed_image.shape
-        xbin = [0 - float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))] + [0 + float(i) * self.mm_per_pixel[0] for i in range(int(nxpixel/2))]
-        xbin.sort()
-        ybin = [0 - float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))] + [0 + float(i) * self.mm_per_pixel[1] for i in range(int(nypixel/2))]
-        ybin.sort()
+        nypixel, nxpixel = transformed_image.shape
+
+        total_x = self.original_pixel[0] * self.mm_per_pixel[0]
+        total_y = self.original_pixel[1] * self.mm_per_pixel[1]
+        mm_per_pixel_x = total_x / nxpixel
+        mm_per_pixel_y = total_y / nypixel
+        xmin = -round(total_x / 2.0)
+        ymin = -round(total_y / 2.0)
+        xbin = [xmin + float(i) * mm_per_pixel_x for i in range(nxpixel)]
+        ybin = [ymin + float(i) * mm_per_pixel_y for i in range(nypixel)]
 
         xhist = [0 for i in range(nxpixel)]
         yhist = [0 for i in range(nypixel)]
-        for xidx, irow in enumerate(transformed_image):
-            for yidx, val in enumerate(irow):
-                xhist[xidx] += val
-                yhist[yidx] += val
+        for xidx in range(nxpixel):
+            for yidx in range(nypixel):
+                xhist[xidx] += transformed_image[yidx][xidx]
+                yhist[yidx] += transformed_image[yidx][xidx]
 
         gauss = lambda x, a, b, c: a*np.exp(-(x-b)**2/2*c**2)
         xhist_percent = np.asarray(xhist)/max(xhist) * 100
         yhist_percent = np.asarray(yhist)/max(yhist) * 100
-        
         if shot:
             try:
                 xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)

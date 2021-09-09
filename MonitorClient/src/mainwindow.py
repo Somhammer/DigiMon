@@ -285,8 +285,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             #graphics = graphics.scaled(self.image_size[0], self.image_size[1])
             #self.labelViewer.resize(graphics.width(), graphics.height())
             self.last_picture = graphics
-            height, width, channel = graphics.shape
-            qImg = QImage(graphics.data, width, height, width*channel, QImage.Format_BGR888)
+            if len(graphics.shape) == 3:
+                height, width, channel = graphics.shape
+                qImg = QImage(graphics.data, width, height, width*channel, QImage.Format_BGR888)
+            else:
+                height, width = graphics.shape
+                qImg = QImage(graphics.data, width, height, width, QImage.Format_Grayscale8)
             pixmap = QPixmap.fromImage(qImg)
             pixmap = pixmap.scaled(self.labelViewer.width(), self.labelViewer.height())
             self.labelViewer.setPixmap(pixmap)
@@ -317,9 +321,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             colors = blue.range_to(red, 255)
             colors_array = np.array([np.array(color.get_rgb()) * 255 for color in colors])
             look_up_table = colors_array.astype(np.uint8)
+
+            graphics = np.array(graphics)
+            graphics = cv2.rotate(graphics, cv2.ROTATE_90_CLOCKWISE)
             
             image = pg.ImageItem()
-            #image.setImage(graphics)
             image.setLookupTable(look_up_table)
             image.setImage(np.array(graphics))
             scale_x = self.blueberry.mm_per_pixel[0]

@@ -55,7 +55,6 @@ class DigiLabel(QLabel):
         
 class SetupWindow(QDialog, Ui_SetupWindow):
     send_signal_to_blueberry = Signal(int, int)
-    logger_signal = Signal(str, str)
     def __init__(self, parent):
         super(SetupWindow, self).__init__()
         self.parent = parent
@@ -155,13 +154,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushCancel.clicked.connect(self.click_cancel)
 
         # Connection
-        # ui_setupwindow가 안정화 되면 그 쪽으로 옮기기
-        self.lineCameraIP1.setValidator(QIntValidator(self))
-        self.lineCameraIP2.setValidator(QIntValidator(self))
-        self.lineCameraIP3.setValidator(QIntValidator(self))
-        self.lineCameraIP4.setValidator(QIntValidator(self))
-        self.lineCameraIP5.setValidator(QIntValidator(self))
-
         self.lineControllerIP1.setValidator(QIntValidator(self))
         self.lineControllerIP2.setValidator(QIntValidator(self))
         self.lineControllerIP3.setValidator(QIntValidator(self))
@@ -214,14 +206,13 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         else:
             fname = os.path.join(base_path, 'setup', 'last.yaml')
 
-        camera_ip = '.'.join(i.text() for i in[self.lineCameraIP1, self.lineCameraIP2, self.lineCameraIP3, self.lineCameraIP4])
+        camera_url = self.lineCameraAddr.text()
         controller_ip = '.'.join(i.text() for i in[self.lineControllerIP1, self.lineControllerIP2, self.lineControllerIP3, self.lineControllerIP4])
 
         fout = open(fname, 'w')
         fout.write(textwrap.dedent(f"""\
             Auto: {str(last)}
-            CameraIP: "{camera_ip}"
-            CameraPort: {self.lineCameraIP5.text()}
+            CameraURL: "{camera_url}"
             CameraSDK: "{self.camera_sdk}"
             ControllerUse: {str(self.checkUseControlServer.isChecked())}
             ControllerIP: {controller_ip}
@@ -247,13 +238,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             with open(fname, 'r') as f:
                 cfg = yaml.load(f, Loader=yaml.FullLoader)
                 
-                camera_ip = str(cfg['CameraIP']).split('.')
-                if len(camera_ip) == 4:
-                    self.lineCameraIP1.setText(camera_ip[0])
-                    self.lineCameraIP2.setText(camera_ip[1])
-                    self.lineCameraIP3.setText(camera_ip[2])
-                    self.lineCameraIP4.setText(camera_ip[3])
-                self.lineCameraIP5.setText(str(cfg['CameraPort']))
+                self.lineCameraAddr.setText(str(cfg['CameraURL']))
                 self.camera_sdk = str(cfg['CameraSDK'])
                 for idx in range(self.comboSDKType.count()):
                     if self.comboSDKType.itemText(idx) == self.camera_sdk:
@@ -305,8 +290,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
     ### Methods for Connection
     def connect_network(self, berry, checkbox):
+        print(self.comboSDKType.currentText(), self.lineCameraAddr.text())
         if berry.name == "Network Camera":
-            ip1, ip2, ip3, ip4, port = self.lineCameraIP1, self.lineCameraIP2, self.lineCameraIP3, self.lineCameraIP4, self.lineCameraIP5
+            url = self.lineCameraAddr.text()
             if self.camera_sdk is None:
                 self.camera_sdk = self.comboSDKType.currentText()
             self.parent.blueberry.sdk = self.camera_sdk
@@ -316,25 +302,26 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.logger.warning(f"Please, check 'Use Network Camera Controller Server' first.")
                 return
             ip1, ip2, ip3, ip4, port = self.lineControllerIP1, self.lineControllerIP2, self.lineControllerIP3, self.lineControllerIP4, self.lineControllerIP5
-
-        if any(i.text() == '' for i in [ip1, ip2, ip3, ip4]):
-            return
-        url = '.'.join(i.text() for i in [ip1, ip2, ip3, ip4])
-        if berry.connected:
-            if berry.address == url and berry.port == port.text():
-                self.set_checked(checkbox, berry.connected)
-                if berry.name == "Network Camera":
-                    self.captured_image = self.parent.blueberry.camera.take_a_picture()
-
-                    height, width, channel = self.captured_image.shape
-                    qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
-                    pixmap = QPixmap.fromImage(qImg)
-                    pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-                    self.labelImage.setPixmap(pixmap)
+            if any(i.text() == '' for i in [ip1, ip2, ip3, ip4]):
                 return
+            url = '.'.join(i.text() for i in [ip1, ip2, ip3, ip4])+':'+port.text()
+        
+        if berry.name == 'Network Camera' and berry.connected and berry.url == url:
+            self.set_checked(checkbox, berry.connected)
+            self.captured_image = self.parent.blueberry.camera.take_a_picture()
 
-        if port.text() != '':
-            berry.initialize(url, port.text())
+            if len(self.captured_image.shape) == 3:
+                height, width, channel = self.captured_image.shape
+                qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
+            else:
+                height, width = self.captured_image.shape
+                qImg = QImage(self.captured_image.data, width, height, QImage.Format_Grayscale8)
+            pixmap = QPixmap.fromImage(qImg)
+            pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
+            self.labelImage.setPixmap(pixmap)
+            return
+
+        berry.initialize(url)
 
         self.logger.info(f"Try to connect to {berry.name}...")
         if berry.connected:
@@ -346,14 +333,27 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.set_checked(checkbox, berry.connected)
 
         if berry.name == "Network Camera":
-            self.captured_image = self.parent.blueberry.camera.take_a_picture()
-            self.backup_image = self.captured_image.copy()
+            if 'ERROR' in berry.msg:
+                msg = berry.msg.replace('ERROR','')
+                self.logger.error(msg)
+            elif 'INFO' in berry.msg:
+                msg  = berry.msg.replace('INFO','')
+                self.logger.info(msg)
+            if berry.connected:
+                self.captured_image = self.parent.blueberry.camera.take_a_picture()
+                self.backup_image = self.captured_image.copy()
 
-            height, width, channel = self.captured_image.shape
-            qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
-            pixmap = QPixmap.fromImage(qImg)
-            pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-            self.labelImage.setPixmap(pixmap)
+                if len(self.captured_image.shape) == 3:
+                    height, width, channel = self.captured_image.shape
+                    qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
+                else:
+                    print(self.captured_image.shape)
+                    print(self.captured_image)
+                    height, width = self.captured_image.shape
+                    qImg = QImage(self.captured_image.data, width, height, width, QImage.Format_Grayscale8)
+                pixmap = QPixmap.fromImage(qImg)
+                pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
+                self.labelImage.setPixmap(pixmap)
 
     ### Methods for Photo
     def set_photo_para(self, idx):
@@ -412,8 +412,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
         
         self.resized_capimage = cv2.resize(image, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
-        height, width, channel = self.resized_capimage.shape
-        qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        if len(self.resized_capimage.shape) == 3:
+            height, width, channel = self.resized_capimage.shape
+            qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        else:
+            width, height = self.resized_capimage.shape
+            qImg = QImage(self.resized_capimage.data, width, height, width, QImage.Format_Grayscale8)
         pixmap = QPixmap.fromImage(qImg)
 
         self.labelImage.resize(width, height)
@@ -425,8 +429,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.draw_image()
             self.select_ROI = False
         if self.resized_capimage is None: return
-        height, width, channel = self.resized_capimage.shape
-        qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        if len(self.resized_capimage.shape) == 3:
+            height, width, channel = self.resized_capimage.shape
+            qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        else:
+            height, width = self.resized_capimage.shape
+            qImg = QImage(self.resized_capimage.data, width, height, width, QImage.Format_Grayscale8)
         pixmap = QPixmap.fromImage(qImg)
         painter = QPainter(pixmap)
         painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
