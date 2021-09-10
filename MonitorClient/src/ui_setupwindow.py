@@ -542,6 +542,11 @@ class Ui_SetupWindow(object):
 
         self.gridLayout_6.addWidget(self.groupROI, 1, 1, 1, 1)
 
+        self.label = QLabel(self.tabPhoto)
+        self.label.setObjectName(u"label")
+
+        self.gridLayout_6.addWidget(self.label, 3, 0, 1, 1)
+
         self.groupFilter = QGroupBox(self.tabPhoto)
         self.groupFilter.setObjectName(u"groupFilter")
         self.groupFilter.setFont(font)
@@ -582,7 +587,7 @@ class Ui_SetupWindow(object):
         self.gridLayout_4.addWidget(self.comboFilter, 0, 0, 1, 2)
 
 
-        self.gridLayout_6.addWidget(self.groupFilter, 2, 1, 1, 1)
+        self.gridLayout_6.addWidget(self.groupFilter, 2, 1, 2, 1)
 
         self.tabWidget.addTab(self.tabPhoto, "")
         self.tabCalibration = QWidget()
@@ -790,7 +795,7 @@ class Ui_SetupWindow(object):
 
         self.retranslateUi(Dialog)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(Dialog)
@@ -843,6 +848,7 @@ class Ui_SetupWindow(object):
         self.lineY0.setText(QCoreApplication.translate("Dialog", u"0", None))
         self.lineHeight.setText(QCoreApplication.translate("Dialog", u"0", None))
         self.labelSPPixel.setText(QCoreApplication.translate("Dialog", u"(0,0) pixel", None))
+        self.label.setText(QCoreApplication.translate("Dialog", u"Drag: draw ROI range, Left double click: set ROI, Right double click: reset ROI", None))
         self.groupFilter.setTitle(QCoreApplication.translate("Dialog", u"Filter", None))
         self.pushFilterApply.setText(QCoreApplication.translate("Dialog", u"Apply", None))
         self.comboFilter.setItemText(0, QCoreApplication.translate("Dialog", u"Select", None))

@@ -253,8 +253,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to quit?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.blueberry.working = False
             self.blueberry.stop()
+            #self.blueberry.deleteLater()
             event.accept()
         else:
             event.ignore()
@@ -282,8 +282,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         gara_pen = pg.mkPen(color=(255,255,255), width=0)
 
         if target == PICTURE_SCREEN:
-            #graphics = graphics.scaled(self.image_size[0], self.image_size[1])
-            #self.labelViewer.resize(graphics.width(), graphics.height())
             self.last_picture = graphics
             if len(graphics.shape) == 3:
                 height, width, channel = graphics.shape
@@ -330,7 +328,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             image.setImage(np.array(graphics))
             scale_x = self.blueberry.mm_per_pixel[0]
             scale_y = self.blueberry.mm_per_pixel[1]
-            image.setTransform(QTransform().scale(scale_x, scale_y).translate(-400,-400))
+            image.setTransform(QTransform().scale(scale_x, scale_y).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
 
             self.plotProfile.addItem(image)
             txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[1]:.2f}) mm  Size: ({additional_curves[2]:.2f}, {additional_curves[3]:.2f}) mm"

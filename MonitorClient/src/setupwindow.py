@@ -20,7 +20,8 @@ from src.ui_setupwindow import Ui_SetupWindow
 class DigiLabel(QLabel):
     clicked = Signal()
     move = Signal()
-    dclicked = Signal()
+    ldclicked = Signal()
+    rdclicked = Signal()
     def __init__(self, parent):
         super(DigiLabel, self).__init__(parent)
         #self.setMouseTracking(True)
@@ -51,7 +52,10 @@ class DigiLabel(QLabel):
         self.clicked.emit()
 
     def mouseDoubleClickEvent(self, event):
-        self.dclicked.emit()
+        if event.button() == Qt.LeftButton:
+            self.ldclicked.emit()
+        elif event.button() == Qt.RightButton:
+            self.rdclicked.emit()
         
 class SetupWindow(QDialog, Ui_SetupWindow):
     send_signal_to_blueberry = Signal(int, int)
@@ -111,7 +115,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
     def initialize_parameter(self):
         self.camera_connected = self.controller_connected = self.photo_setup = self.select_ROI = self.calibrated = False
 
-        self.camera_sdk = None
+        self.camera_sdk = self.comboSDKType.currentText()
 
         self.backup_image = None
 
@@ -166,9 +170,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushConnectCamera.clicked.connect(lambda: self.connect_network(self.parent.blueberry, self.checkCameraConnected))
         self.pushConnectController.clicked.connect(lambda: self.connect_network(self.parent.blackberry, self.checkControllerConnected))
 
+        self.comboSDKType.currentTextChanged.connect(self.set_sdk)
+
         # Photo
         self.labelImage.move.connect(self.set_ROI)
-        self.labelImage.dclicked.connect(self.draw_ROI)
+        self.labelImage.ldclicked.connect(self.apply_ROI)
+        self.labelImage.rdclicked.connect(self.reset_ROI)
 
         self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
         self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
@@ -289,12 +296,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.load_calibrated_image()
 
     ### Methods for Connection
+    def set_sdk(self):
+        self.camera_sdk = self.comboSDKType.currentText()
+
     def connect_network(self, berry, checkbox):
-        print(self.comboSDKType.currentText(), self.lineCameraAddr.text())
         if berry.name == "Network Camera":
             url = self.lineCameraAddr.text()
-            if self.camera_sdk is None:
-                self.camera_sdk = self.comboSDKType.currentText()
             self.parent.blueberry.sdk = self.camera_sdk
             self.logger.info(f"Set SDK as {self.camera_sdk}.")
         else:
@@ -308,17 +315,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         
         if berry.name == 'Network Camera' and berry.connected and berry.url == url:
             self.set_checked(checkbox, berry.connected)
-            self.captured_image = self.parent.blueberry.camera.take_a_picture()
-
-            if len(self.captured_image.shape) == 3:
-                height, width, channel = self.captured_image.shape
-                qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
-            else:
-                height, width = self.captured_image.shape
-                qImg = QImage(self.captured_image.data, width, height, QImage.Format_Grayscale8)
-            pixmap = QPixmap.fromImage(qImg)
-            pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-            self.labelImage.setPixmap(pixmap)
+            self.camera_connected = True
+            if self.captured_image is None:
+                self.captured_image = self.parent.blueberry.camera.take_a_picture()
+            self.draw_image()
             return
 
         berry.initialize(url)
@@ -327,8 +327,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         if berry.connected:
             self.logger.info("Connection is succeed")
         else:
-            self.parent.blueberry.sdk = None
-            self.camera_sdk = None
             self.logger.error(f"Connection is failed. Please, reconnect to {berry.name}...")
         self.set_checked(checkbox, berry.connected)
 
@@ -340,23 +338,14 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 msg  = berry.msg.replace('INFO','')
                 self.logger.info(msg)
             if berry.connected:
+                self.camera_connected = True
                 self.captured_image = self.parent.blueberry.camera.take_a_picture()
                 self.backup_image = self.captured_image.copy()
-
-                if len(self.captured_image.shape) == 3:
-                    height, width, channel = self.captured_image.shape
-                    qImg = QImage(self.captured_image.data, width, height, width*channel, QImage.Format_BGR888)
-                else:
-                    print(self.captured_image.shape)
-                    print(self.captured_image)
-                    height, width = self.captured_image.shape
-                    qImg = QImage(self.captured_image.data, width, height, width, QImage.Format_Grayscale8)
-                pixmap = QPixmap.fromImage(qImg)
-                pixmap = pixmap.scaled(self.labelImage.width(), self.labelImage.height())
-                self.labelImage.setPixmap(pixmap)
+                self.draw_image()
 
     ### Methods for Photo
     def set_photo_para(self, idx):
+        if self.camera_connected:
             self.changed = True
             if idx == CAMERA_GAIN:
                 self.gain = self.sliderGain.value()
@@ -387,12 +376,15 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.labelSizePixel.setText(f"({self.ROI[1][0]}, {self.ROI[1][1]}) pixel")
                 self.draw_rectangle()
 
-            if (idx == i for i in [CAMERA_GAIN, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
-                if self.camera_connected:
+        if (idx == i for i in [CAMERA_GAIN, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
+            if self.camera_connected:
+                if self.captured_image is None:
                     self.captured_image = self.parent.blueberry.camera.take_a_picture()
-                    self.draw_image()
+                #sself.draw_image()
 
     def draw_image(self):
+        if not self.camera_connected: return
+
         image = copy.deepcopy(self.captured_image)
 
         if self.filter_code == BKG_SUBSTRACTION:
@@ -410,6 +402,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             scolor = self.filter_para['sigma color']
             sspace = self.filter_para['sigma space']
             image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
+
+        if self.ROI != [[0,0], [0,0]] and self.select_ROI:
+            x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
+            image = image[y:y+height, x:x+width]
         
         self.resized_capimage = cv2.resize(image, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
         if len(self.resized_capimage.shape) == 3:
@@ -424,11 +420,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.labelImage.setPixmap(pixmap)
 
     def draw_rectangle(self):
-        if self.select_ROI:
-            self.captured_image = self.backup_image.copy()
-            self.draw_image()
-            self.select_ROI = False
+        if self.select_ROI: return
+
         if self.resized_capimage is None: return
+
         if len(self.resized_capimage.shape) == 3:
             height, width, channel = self.resized_capimage.shape
             qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
@@ -449,7 +444,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.labelImage.setPixmap(pixmap)
 
     def set_ROI(self):
-        if not self.labelImage.left: return
+        if not self.camera_connected or self.select_ROI or not self.labelImage.left: return
+
         if self.labelImage.x < self.labelImage.x_end and self.labelImage.y < self.labelImage.y_end:
             x = self.labelImage.x
             y = self.labelImage.y
@@ -470,16 +466,20 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.sliderWidth.setValue(width / self.labelImage.width() * 1000)
         self.sliderHeight.setValue(height / self.labelImage.height() * 1000)
 
-    def draw_ROI(self):
-        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
-
-        src = self.captured_image.copy()
-        roi = src[y:y+height, x:x+width]
-        self.captured_image = roi
-        roi = cv2.resize(roi, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
-        self.resized_capimage = roi
-        self.draw_image()
+    def apply_ROI(self):
         self.select_ROI = True
+        self.draw_image()
+
+    def reset_ROI(self):
+        self.ROI = [[0,0],[0,0]]
+
+        self.sliderX0.setValue(0)
+        self.sliderY0.setValue(0)
+        self.sliderWidth.setValue(0)
+        self.sliderHeight.setValue(0)
+
+        self.select_ROI = False
+        self.draw_image()
 
     def load_filter_parameters(self):
         class Item(QWidget):

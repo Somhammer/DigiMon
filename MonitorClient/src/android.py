@@ -19,6 +19,8 @@ class Camera():
         # 제대로 카메라 연결 시킬려면 앱을 만들어서 설치하게 해야는데 앱까지 만들 시간은 없음 ㅋ
         # OpenCV exposure time: 2^(exposure_time_value)
         # exposure_time_value range: 0 ~ -13
+        self.gain = int(value)
+        #self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
         self.exposure_time = float(value)
         if self.exposure_time >= 1000: value = 0
         elif self.exposure_time < 1000 and self.exposure_time >= 500: value = -1

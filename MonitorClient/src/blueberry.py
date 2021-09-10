@@ -103,7 +103,6 @@ class Blueberry(QThread):
             if not self.connected: continue
             self.camera.idx = self.idx
             if self.idx == CAMERA_EXIT:
-                self.sleep(1)
                 break
             elif self.idx == CAMERA_CAPTURE:
                 self.take_pictures()
@@ -171,6 +170,8 @@ class Blueberry(QThread):
         x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
         src = image.copy()
         image = src[y:y+height, x:x+width]
+        height, width = image.shape
+        image = cv2.resize(image, dsize=(height, width), interpolation=cv2.INTER_LINEAR)
         return image
 
     def take_pictures(self):
@@ -181,6 +182,13 @@ class Blueberry(QThread):
             if self.idx == CAMERA_STOP:
                 self.thread_logger_signal.emit('INFO', str("Stop taking picgures"))
                 break
+            self.image = self.camera.take_a_picture()
+
+            self.image = self.rotate_image(self.image)
+            self.image = self.filter_image(self.image)
+            self.image = self.transform_image(self.image)
+            self.image = self.slice_image(self.image)
+            
             self.last_picture = self.image
             outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H:%M:%S.%f')}.png")
             cv2.imwrite(outname, self.last_picture)
@@ -205,13 +213,14 @@ class Blueberry(QThread):
         if not self.working: return
 
         self.image = self.camera.take_a_picture()
-        self.original_pixel = [self.image.shape[1], self.image.shape[0]]
 
         # 아래 세 친구의 순서는 어떻게 할 것인가...
         self.image = self.rotate_image(self.image)
         self.image = self.filter_image(self.image)
         self.image = self.transform_image(self.image)
-        #self.image = self.slice_image(self.image)
+        self.image = self.slice_image(self.image)
+
+        self.original_pixel = [self.image.shape[1], self.image.shape[0]]
 
         transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline = self.analyze_picture(self.image)
         xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
@@ -245,10 +254,10 @@ class Blueberry(QThread):
         total_y = self.original_pixel[1] * self.mm_per_pixel[1]
         mm_per_pixel_x = total_x / nxpixel
         mm_per_pixel_y = total_y / nypixel
-        xmin = -round(total_x / 2.0)
-        ymin = -round(total_y / 2.0)
-        xbin = [xmin + float(i) * mm_per_pixel_x for i in range(nxpixel)]
-        ybin = [ymin + float(i) * mm_per_pixel_y for i in range(nypixel)]
+        self.xmin = -round(total_x / 2.0)
+        self.ymin = -round(total_y / 2.0)
+        xbin = [self.xmin + float(i) * mm_per_pixel_x for i in range(nxpixel)]
+        ybin = [self.ymin + float(i) * mm_per_pixel_y for i in range(nypixel)]
 
         xhist = [0 for i in range(nxpixel)]
         yhist = [0 for i in range(nypixel)]
@@ -294,27 +303,14 @@ class Blueberry(QThread):
         # OpenCV can not control IP webcam's parameters...
         ### Camera Control
         if self.idx == CAMERA_GAIN:
-            self.gain = int(value)
-            #self.camera.set(cv2.CAP_PROP_GAIN, self.gain)
+            if self.connected:
+                self.camera.set_parameter(idx, value)
+        elif self.idx == CAMERA_EXPOSURE_TIME:
+            if self.connected:
+                self.camera.set_parameter(idx, value)
+            self.exposure_time = float(value)
         elif self.idx == CAMERA_FPS:
             self.frame = int(value)
-            #self.camera.set(cv2.CAP_PROP_FPS, self.frame)
-        elif self.idx == CAMERA_EXPOSURE_TIME:
-            # OpenCV exposure time: 2^(exposure_time_value)
-            # exposure_time_value range: 0 ~ -13
-            self.exposure_time = float(value)
-            if self.exposure_time >= 1000: value = 0
-            elif self.exposure_time < 1000 and self.exposure_time >= 500: value = -1
-            elif self.exposure_time < 500 and self.exposure_time >= 250: value = -2
-            elif self.exposure_time < 250 and self.exposure_time >= 125: value = -3
-            elif self.exposure_time < 125 and self.exposure_time >= 62.5: value = -4
-            elif self.exposure_time < 62.5 and self.exposure_time >= 31.3: value = -5
-            elif self.exposure_time < 31.3 and self.exposure_time >= 15.6: value = -6
-            elif self.exposure_time < 15.6 and self.exposure_time >= 7.8: value = -7
-            elif self.exposure_time < 7.8 and self.exposure_time >= 3.9: value = -8
-            elif self.exposure_time < 3.9 and self.exposure_time >= 2: value = -9
-            elif self.exposure_time < 2 and self.exposure_time >= 0.9766: value = -10
-            #self.camera.set(cv2.CAP_PROP_EXPOSURE, value)
         elif self.idx == CAMERA_REPEAT:
             self.repeat = value
         elif self.idx == CAMERA_ROTATION_RIGHT:
