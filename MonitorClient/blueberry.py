@@ -112,7 +112,7 @@ class Blueberry(QThread):
                 self.connected = False
         elif "Vimba" in self.sdk:
             if not import_vimba:
-                self.msg = 'ERROR please install vimba module'
+                self.msg = 'ERRORPlease install vimba module'
                 self.connected = False
             else:
                 self.url = url
@@ -130,7 +130,7 @@ class Blueberry(QThread):
                     self.connected = False
         elif "Pylon" in self.sdk:
             if not import_pylon:
-                self.msg = 'Please install pylon module'
+                self.msg = 'ERRORPlease install pylon module'
                 self.connected = False
             else:
                 self.converter = pylon.ImageFormatConverter()

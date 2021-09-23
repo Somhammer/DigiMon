@@ -152,12 +152,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         bluePen = pg.mkPen(color=(0,0,255), width=1)
 
         self.plotLiveX = pg.PlotWidget()
+        self.plotLiveX.setBackground('w')
         self.plotLiveX.showGrid(x=True, y=True)
         self.plotLiveX.setLabel('bottom', 'Horizontal')
         self.liveXCurve = self.plotLiveX.plot(pen=bluePen)
         self.gridLiveXProfile.addWidget(self.plotLiveX)
 
         self.plotLiveY = pg.PlotWidget()
+        self.plotLiveY.setBackground('w')
         self.plotLiveY.showGrid(x=True, y=True)
         self.plotLiveY.setLabel('bottom', 'Vertical')
         self.liveYCurve = self.plotLiveY.plot(pen=bluePen)
