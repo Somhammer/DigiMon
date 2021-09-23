@@ -2,9 +2,9 @@ Digital Camera Monitoring System
 -------------
 Digital Camera Monitoring System(이하 DigiMon)은 카메라를 이용해 빔의 transverse profile을 측정하는 프로그램 입니다.
 
-한국어 설명서: [Korean](https://github.com/Somhammer/DigiMon/blob/main/README_KR.md)
+한국어 설명서: [Korean](https://github.com/Somhammer/DigiMon/blob/master/README_KR.md)
 
-영어 설명서: [English](https://github.com/Somhammer/DigiMon/blob/main/README.md)
+영어 설명서: [English](https://github.com/Somhammer/DigiMon/blob/master/README.md)
 
 ### 다운로드와 설치
 최신 버전의 프로그램은 저장소의 [release](https://github.com/Somhammer/DigiMon/releases) 란에서 받을 수 있습니다.
