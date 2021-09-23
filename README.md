@@ -1,10 +1,9 @@
-Digital Camera Monitoring
-빔 프로파일 모니터 프로그램
+Digital Camera Monitoring System
+-------------
+Hum..
+Korean manual: [Korean](https://github.com/Somhammer/ProtonTherapy/blob/main/README_KR.md)
 
-Requirements
-- Opencv(opencv-python-headless)
-- matplotlib
-- pyside6
-- numpy
-- scipy
-- pyqtgraph
+English manual: [English](https://github.com/Somhammer/ProtonTherapy/blob/main/README.md)
+
+### Installation
+https://github.com/Somhammer/DigiMon/releases
