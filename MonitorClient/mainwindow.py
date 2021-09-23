@@ -188,6 +188,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def setup_camera(self):
         if self.dialog: return
+        self.blueberry.working = False
         setup = SetupWindow(self)
         self.dialog = True
         r = setup.return_para()
@@ -215,6 +216,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.blueberry.filter_para = setup.filter_para
 
             if self.blueberry.connected:
+                self.blueberry.working = True
                 self.blueberry.start()
 
         self.dialog = False
