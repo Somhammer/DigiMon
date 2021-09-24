@@ -57,5 +57,39 @@ python DigiMon.py
 <img src="figs/mainwindow-en.png" width="80%" height="80%" title="Main Window"></img>
 
 1. Camera Screen
+
+After connecting the camera, a live streaming video appears here. You can change the frame on the control panel.
+I the video, a green cross-hair is shown which is the point you want to watch the light intensity. 
+It can be changed if you click and drag the point of cross-hair.
+
+2. Live intensity
+
+It shows the light intensity of the pixel area which you selected on the screen.
+
+3. Setup and status
+
+By clicking the setup button, you can connect the camera, set capturing option, ROI, and filter, and calibrate the camera image.
+The left side of the setup button shows the status of each.
+For example, if the camera is connected successfully, the camera light turns green.
+
+4. Image profile
+
+If you take a picture, the profile of the picture is shown here.
+
+5. Control
+
+In the control panel, you can set the frame of the video and how many times you capture the photo.
+And arrow buttons are rotating or flipping the image.
+The zoom-in and zoom-out buttons zoom in or zoom out the video. 
+Because they do not control the camera lens but move the controller, you can use these buttons when the controller is activated.
+
+And you can capture the image by clicking the capture button and stop by clicking the stop button.
+
+6. Captured images(Profile)
+
+In the profile panel, captured imaes are listed in the table and by clicking the emittance button, you can measure the emittance.
+If you want to load other images, click the open button.
+Also, the current of the quadrupole when you did capture is written by writting the current in the current box or double clicking and writting the current in table. 
+
 #### Setup
 #### Emittance
