@@ -25,4 +25,37 @@ If your operating system is Window, add the VIMBA_HOME environment parameter. Th
 
 The DigiMon can be operated neither two software are installed, but GigE camera of each corporation cannot be connected. Please install the software that you need.
 
-#### Source file installation
+#### Source
+
+If you want to download the source file you can download it on the [release](https://github.com/Somhammer/DigiMon/releases) page or git clone.
+```
+git clone https://github.com/Somhammer/DigiMon.git
+```
+
+The DigiMon requires python 3.8 or aboved. And as in the previous case(binary installation) pylon and vimba are needed.
+Also, such libraries are required.
+
+- PySide6 >= 6.1.2
+- pyqtgraph >= 0.12.2
+- colour >= 0.1.5
+- matplotlib >= 3.4.2
+- numpy >= 1.21.1
+- scipy >= 1.7.1
+- PyYAML >= 5.3.1
+- cv2 >= 4.5.3.56
+- pypylon >= 1.7.2.dev4
+- VimbaPython >= 1.1.0
+
+After the above libraries are installed using pip, you can run by
+```
+python DigiMon.py
+```
+
+### Browsing
+#### Main
+
+<img src="figs/mainwindow-en.png" width="80%" height="80%" title="Main Window"></img>
+
+1. Camera Screen
+#### Setup
+#### Emittance
