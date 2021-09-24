@@ -91,5 +91,75 @@ In the profile panel, captured imaes are listed in the table and by clicking the
 If you want to load other images, click the open button.
 Also, the current of the quadrupole when you did capture is written by writting the current in the current box or double clicking and writting the current in table. 
 
+- Example after the camera connection
+
+<img src="figs/main.gif" width="70%" height="70%" title="Setup Window"></img>
+
 #### Setup
+
+<img src="figs/setupwindow.png" width="70%" height="70%" title="Setup Window"></img>
+
+If you open a setup window by clicking the setup button, connection, photo, and calibration tabs are shown.
+And the above tab, save and load buttons are in.
+You can save the setup after finishing the setup and you can load the setup made before.
+Setup files in the setup folder are automatically added in the combo box beside the load button.
+Also, if the check box on the bottom side is checked, this setup is saved as the 'last.yaml' in the setup folder and you can load it next time.
+
+Now let us take a look at each tab.
+
+You can connect the camera and the device that remotely adjusts the camera position (NCC builds a server that receives signals on the Raspberry Pi) which are called the controller hereinafter. The controller is optional.
+
+The DigiMon search and connect the camera if you choose the SDK to fit the product and click connect button.
+But if you use OpenCV, you must write the URL.
+If the connection is succeeded, the connect check box is checked.
+
+- Example 1. Android camera
+
+IP webcam application is used.
+
+<img src="figs/connection-opencv.gif" width="70%" height="70%" title="Connection Android"></img>
+
+- Example 2. Basler CCD camera
+
+acA 1600-20gm CCD camera is used.
+
+<img src="figs/connection-basler.gif" width="70%" height="70%" title="Connection Basler"></img>
+
+(Allied vision camera is not tested yet)
+
+In the controller case, check the 'Use Network Camera Control Server' and write IP and port number and click connect button.
+
+<img src="figs/Controller.gif" width="70%" height="70%" title="Connection Controller"></img>
+
+
+If the camera connection is succeeded, a picture is shown captured by the connected camera in the photo tab.
+In the photo tab, you can set the gain, exposure time, ROI, and filter.
+In the ROI case, you can choose the region by clicking and dragging on the picture window or moving the ROI sliders.
+After choosing the region, it can be applied by double-clicking the picture.
+
+<img src="figs/Photo-ROI.gif" width="70%" height="70%" title="ROI"></img>
+
+The sliders can be moved by pressing the arrow keys and the default unit is 0.1 % but if Ctrl button is pressed the unit is 1% and if Shift button is pressed the unit is 10%.
+
+To apply the filter, choose the filter and write the parameters then click the apply button.
+
+In the calibration tab, you can convert the tilted photo to a flat photo using the rotation and the perspective transformation and can set the real length per pixel.
+
+By the open button, you can load the image for the calibration and can rotate the image by clicking the up down button below the image.
+
+<img src="figs/Calibration-rotation.gif" width="70%" height="70%" title="ROI"></img>
+
+For the perspective transformation, you should click the four points and press the convert button.
+The points which are chosen convert to the vertext of the purple rectangle. Also, the area of the rectangle is determined in the transform image size box. If you do not write anything in there, the area is determined the length between each point(horizontal length is upper two points, vertical length is left two points).
+
+<img src="figs/Calibration-convert.gif" width="70%" height="70%" title="ROI"></img>
+
+The point for the transformation is made by left-clicking and removed by right-clicking and moved per 1 pixel unit by Ctrl + arrow button.
+
+<img src="figs/Calibration-move.gif" width="30%" height="30%" title="ROI"></img>
+
+After completing the calibration, press the ok button to display the video in the main window.
+
 #### Emittance
+
+<img src="figs/emittance.png" width="70%" height="70%" title="ROI"></img>
