@@ -41,3 +41,78 @@ DigiMon은 Vimba 5.0을 이용했으며 각자의 운영체제에 맞게 [다운
 - VimbaPython
 
 위 라이브러리들을 pip을 이용해 설치한 뒤 python DigiMon.py를 이용해 실행할 수 있습니다.
+
+### 둘러보기
+#### 메인 화면
+<img src="figs/mainwindow.png" width="80%" height="80%" title="Main Window"></img>
+
+#### 셋업
+
+<img src="figs/setupwindow.png" width="70%" height="70%" title="Setup Window"></img>
+
+
+셋업 버튼을 눌러 창을 띄우면 Connection, Photo, Calibration 세 탭이 나타납니다.
+
+그리고 탭 위에는 Save, Load 버튼과 콤보박스가 있습니다. 셋업을 마치고 Save 버튼을 눌러서 셋업을 저장, Load 버튼을 눌러 이전에 만든 셋업을 불러올 수 있습니다.
+
+또 DigiMon 폴더의 setup 아래에 있는 셋업들은 콤보박스에 저장이 됩니다.
+
+또한 맨 아래의 This settings will be used later 체크박스가 체크되어 있으면 setup 폴더 밑에 last로 저장이 되며, 다음에 콤보박스에서 불러오는 것으로 바로 이용할 수 있습니다.
+
+
+이제 각각의 탭에 대해 살펴보겠습니다.
+
+Connection 탭은 카메라와 (필요하다면) 원격으로 카메라 위치를 조정하는 장치(NCC에서는 라즈베리 파이에 신호를 받는 서버를 구축, 이하 컨트롤러)를 연결할 수 있습니다.
+
+먼저 카메라의 경우 제품에 맞게 SDK를 선택한 뒤 (OpenCV의 경우 URL을 입력하고) Connect 버튼을 누르면 프로그램이 IP 카메라를 찾아 연결합니다.
+
+연결이 성공할 경우 Connect 체크박스가 체크됩니다.
+
+- 안드로이드 카메라 연결 예시
+
+IP Webcam 앱을 이용하였습니다.
+
+<img src="figs/connection-opencv.gif" width="70%" height="70%" title="Connection Android"></img>
+
+- Basler CCD 카메라 연결 예시
+
+acA 1600 - 20gm CCD 카메라를 이용하였습니다.
+
+<img src="figs/connection-basler.gif" width="70%" height="70%" title="Connection Basler"></img>
+
+- Allied Vision 카메라 연결 예시
+
+(테스트 아직 못함)
+
+컨트롤러의 경우 Use Network Camera Control Server 체크박스를 체크하고 IP와 Port 번호를 입력한 뒤 Connection 버튼을 누르면 연결이 됩니다.
+
+<img src="figs/Controller.gif" width="70%" height="70%" title="Connection Controller"></img>
+
+
+연결이 성공하면 Photo 탭에 카메라로 찍은 사진이 표시됩니다. 그리고 Photo 탭에서 게인, 노출시간, ROI, 필터를 설정할 수 있습니다.
+
+ROI의 경우 이미지 창에서 영역을 클릭, 드래그로 선택하거나 슬라이더를 조절해 선택할 수 있습니다. 만약 ROI 설정이 끝났다면 이미지 더블클릭을 통해 적용할 수 있습니다.
+
+<img src="figs/Photo-ROI.gif" width="70%" height="70%" title="ROI"></img>
+
+슬라이더들은 키보드 좌우화살표로 움직일 수 있으며 기본은 0.1%단위로 움직이고 컨트롤 버튼을 누를시 1%, 시프트 버튼을 누를시 10% 단위로 움직입니다.
+
+필터는 원하는 필터를 선택한 뒤 값들을 입력하고 Apply 버튼을 누르면 적용됩니다. 
+
+
+Calibration 창에서는 기울어진 사진을 회전 또는 투영변환을 통해 기울어짐을 없앨 수 있습니다. 그리고 픽셀 당 실제 거리를 설정해줄 수 있습니다.
+
+Open을 통해 Calibration 용 이미지를 불러오면 사진 아래의 회전각 조절을 통해 이미지를 반시계방향으로 돌릴 수 있습니다.
+
+<img src="figs/Calibration-rotation.gif" width="70%" height="70%" title="ROI"></img>
+
+그리고 투영변환을 위한 네 점을 찍고 Convert 버튼을 이용해 변환할 수 있습니다. 불러온 이미지에서 찍은 네 점은 변환된 이미지에 그려진 보라색 사각형의 각 꼭지점이 됩니다. 또한 이 사각형의 크기는 Transformed image size 란에서 결정할 수 있습니다. 아무것도 입력하지 않으면 원래 이미지에서 찍은 점 사이의 거리로 결정됩니다(가로는 위쪽의 두 점, 세로는 왼쪽의 두 점).
+
+<img src="figs/Calibration-convert.gif" width="70%" height="70%" title="ROI"></img>
+
+투영변환을 위한 점들은 마우스 좌클릭으로 생성, 우클릭으로 삭제할 수 있으며 컨트롤 + 화살표 버튼으로 1픽셀 단위로 움직일 수 있습니다.
+
+<img src="figs/Calibration-move.gif" width="30%" height="30%" title="ROI"></img>
+
+그리고 Calibration까지 마치고 Open 버튼을 누르면 메인 화면에 카메라 영상이 나타나게 됩니다.
+
