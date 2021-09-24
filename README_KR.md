@@ -46,6 +46,41 @@ DigiMon은 Vimba 5.0을 이용했으며 각자의 운영체제에 맞게 [다운
 #### 메인 화면
 <img src="figs/mainwindow.png" width="80%" height="80%" title="Main Window"></img>
 
+1. 카메라 화면
+
+Setup 버튼을 눌러 카메라를 연결하면 카메라 영상이 나타납니다. 영상의 프레임은 조작 패널에서 바꿀 수 있습니다.
+
+2. 실시간 빔 세기
+
+카메라 영상에서 픽셀의 빛의 세기를 보여주는 그래프입니다. 세기를 보여주는 
+
+3. 셋업, 상태
+
+Setup 버튼을 눌러 카메라 연결, 이미지 설정, Calibration을 할 수 있습니다. 버튼 옆 신호는 각각의 상태를 나타냅니다. 
+만약 카메라가 성공적으로 연결되었다면 카메라 신호가 초록색으로 바뀝니다.
+
+4. 사진 프로파일
+
+이 창은 사진을 찍으면 찍힌 사진의 프로파일이 나타납니다.
+
+5. 조작
+ 
+Control 패널 안에서 영상의 프레임과 사진을 찍을 때 몇회 반복할 것인지 정할 수 있습니다. 
+그리고 Screen의 화살표 버튼들은 왼쪽부터 차례로 왼쪽 90도 회전, 오른쪽 90도 회전, 좌우 반전, 상하 반전, 카메라 줌 인, 아웃 입니다. 
+카메라 줌 인, 아웃의 경우 카메라 렌즈를 조작하는 것이 아닌, Controller를 움직이는 방식으로 작동하기 때문에 Controller가 활성화 되어있을 때 사용할 수 있습니다.
+그리고 Capture 버튼을 통해 사진을 찍을 수 있으며 Stop 버튼을 통해 중간에 멈출 수 있습니다.
+
+6. 저장된 사진(프로파일)
+ 
+프로파일 패널은 촬영한 사진들의 목록이 표로 기록되며 Emittance 버튼을 눌러 촬영한 사진들을 이용해 emittance를 측정할 수 있습니다.
+Open 버튼을 누르면 이전에 저장한 사진을 불러올 수 있습니다.
+또한 사진 촬영 당시의 전류를 표에서 수정하거나 사진 촬영 직전에 Current 칸을 수정해 기록할 수 있습니다.
+
+- 카메라가 연결 후의 화면 예시
+
+<img src="figs/main.gif" width="70%" height="70%" title="Setup Window"></img>
+
+
 #### 셋업
 
 <img src="figs/setupwindow.png" width="70%" height="70%" title="Setup Window"></img>
@@ -114,5 +149,15 @@ Open을 통해 Calibration 용 이미지를 불러오면 사진 아래의 회전
 
 <img src="figs/Calibration-move.gif" width="30%" height="30%" title="ROI"></img>
 
-그리고 Calibration까지 마치고 Open 버튼을 누르면 메인 화면에 카메라 영상이 나타나게 됩니다.
+그리고 Calibration까지 마치고 Ok 버튼을 누르면 메인 화면에 카메라 영상이 나타나게 됩니다.
 
+#### 에미턴스
+
+<img src="figs/emittance.png" width="70%" height="70%" title="ROI"></img>
+
+에미턴스 창에서는 저장된 사진들로 에미턴스를 계산할 수 있습니다. 
+먼저 좌측 상단의 Select 콤보 박스에서 사용할 방법을 고릅니다(현재는 quadrupole scan만 구현). 그러면 다음과 같이 입력해야 할 변수들과 그래프가 나타나게 됩니다.
+
+<img src="figs/quadscan.png" width="70%" height="70%" title="ROI"></img>
+
+변수들을 다 입력하고 Run 버튼을 누르면 emittance와 twiss parameter들이 계산됩니다. 만약 계산에 실패하면 아래 로그창에 실패 메세지가 뜨고 값들은 전부 0.0으로 계산됩니다.
