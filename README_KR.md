@@ -29,16 +29,16 @@ DigiMon은 Vimba 5.0을 이용했으며 각자의 운영체제에 맞게 [다운
 만약 소스파일을 다운로드 받아서 이용한다면 Python3.8 이상이 요구됩니다. 그리고 앞의 경우와 마찬가지로 pylon과 vimba가 필요합니다.
 또한 다음과 같은 라이브러리들이 추가로 필요합니다.
 
-- PySide6
-- pyqtgraph
-- colour
-- matplotlib
-- numpy
-- scipy
-- pyyaml
-- cv2
-- pypylon
-- VimbaPython
+- PySide6 >= 6.1.2
+- pyqtgraph >= 0.12.2
+- colour >= 0.1.5
+- matplotlib >= 3.4.2
+- numpy >= 1.21.1
+- scipy >= 1.7.1
+- PyYAML >= 5.3.1
+- cv2 >= 4.5.3.56
+- pypylon >= 1.7.2.dev4
+- VimbaPython >= 1.1.0
 
 위 라이브러리들을 pip을 이용해 설치한 뒤 python DigiMon.py를 이용해 실행할 수 있습니다.
 
