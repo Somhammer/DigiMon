@@ -9,7 +9,7 @@ Digital Camera Monitoring System(이하 DigiMon)은 카메라를 이용해 빔�
 ### 다운로드와 설치
 최신 버전의 프로그램은 저장소의 [release](https://github.com/Somhammer/DigiMon/releases) 란에서 받을 수 있습니다.
 
-만약 운영체제에 맞게 압축파일을 다운로드한 이용할 카메라 회사(Basler, Allied Vision)의 소프트웨어(Pylon, Vimba)를 설치하면 프로그램을 바로 이용할 수 있습니다. 
+만약 운영체제에 맞게 다운로드한 다음 이용할 카메라 회사(Basler, Allied Vision)의 소프트웨어(Pylon, Vimba)를 설치하면 프로그램을 바로 이용할 수 있습니다. 
 
 소스파일을 받은 경우에는 여러 라이브러리들이 추가로 필요합니다.
 
