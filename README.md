@@ -163,3 +163,11 @@ After completing the calibration, press the ok button to display the video in th
 #### Emittance
 
 <img src="figs/emittance.png" width="70%" height="70%" title="ROI"></img>
+
+You can measure the emittance in above window.
+To measure it, first, select the method(now only quadrupole scan method is implemented) then the parameters and some graphs are shown.
+
+<img src="figs/quadscan.png" width="70%" height="70%" title="ROI"></img>
+
+Push the run button after typing parameters into then the emittance and twiss parameters are calculated.
+If calculating is fails, an error message is shown in the log and every value is shown as 0.0.
