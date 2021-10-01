@@ -20,6 +20,7 @@ class Ui_SetupWindow(object):
         base_path = os.path.abspath(os.path.dirname(__file__))
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
+        Dialog.setWindowModality(Qt.ApplicationModal)
         Dialog.resize(1086, 711)
         sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)

@@ -20,6 +20,7 @@ class Ui_EmittanceWindow(object):
 
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
+        Dialog.setWindowModality(Qt.ApplicationModal)
         Dialog.resize(1128, 890)
         icon = QIcon()
         icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)

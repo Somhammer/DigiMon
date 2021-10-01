@@ -20,6 +20,7 @@ class Ui_HiddenWindow(object):
 
         if not CloseServer.objectName():
             CloseServer.setObjectName(u"CloseServer")
+        CloseServer.setWindowModality(Qt.ApplicationModal)
         CloseServer.resize(400, 70)
         icon = QIcon()
         icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)
