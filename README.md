@@ -7,6 +7,10 @@ Korean manual: [Korean](https://github.com/Somhammer/DigiMon/blob/master/README_
 
 English manual: [English](https://github.com/Somhammer/DigiMon/blob/master/README.md)
 
+### Authors
+- Seohyeon An(san@ncc.re.kr)
+- Garam Hahn(garam@postech.ac.kr)
+
 ### Download and Installation
 
 The newest program can be downloaded in the [release](https://github.com/Somhammer/DigiMon/releases) section of the repository.
