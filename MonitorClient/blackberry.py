@@ -5,12 +5,15 @@ from variables import *
 
 class Blackberry():
     def __init__(self):
+        self.name = "Profile Monitor Controller"
+        self.initialize()
+
+    def initialize(self):
         self.address = '127.0.0.1'
         self.port = 8000
         self.connected = False
-        self.name = "Profile Monitor Controller"
 
-    def initialize(self, url):
+    def connection(self, url):
         tmp = url.split(':')
         self.address = tmp[0]
         self.port = tmp[1]

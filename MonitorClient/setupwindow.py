@@ -40,6 +40,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.initialize_parameter()
         self.set_action()
+
+        print(self.parent.blueberry.connected)
+
         self.show()
 
     def keyPressEvent(self, event):
@@ -141,6 +144,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
         self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
+
+        self.sliderGain.sliderReleased.connect(lambda: self.take_a_picture())
+        self.sliderExposureTime.sliderReleased.connect(lambda: self.take_a_picture())
 
         self.sliderX0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_X0))
         self.sliderY0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_Y0))
@@ -289,7 +295,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.draw_image()
             return
 
-        berry.initialize(url)
+        berry.connection(url)
 
         self.logger.info(f"Try to connect to {berry.name}...")
         if berry.connected:
@@ -344,15 +350,18 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.labelSizePixel.setText(f"({self.ROI[1][0]}, {self.ROI[1][1]}) pixel")
                 self.draw_rectangle()
 
-        if (idx == i for i in [CAMERA_GAIN, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
+        if (idx == i for i in [CAMERA_GAIN, CAMERA_EXPOSURE_TIME, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
             if self.camera_connected:
                 if self.captured_image is None:
                     self.captured_image = self.parent.blueberry.take_a_picture(True)
-                #sself.draw_image()
+
+    def take_a_picture(self):
+        self.captured_image = self.parent.blueberry.take_a_picture(True)
+        self.backup_image = self.captured_image.copy()
+        self.draw_image()
 
     def draw_image(self):
         if not self.camera_connected: return
-
         image = copy.deepcopy(self.captured_image)
 
         if self.filter_code == BKG_SUBSTRACTION:

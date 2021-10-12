@@ -191,6 +191,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def setup_camera(self):
         if self.dialog: return
         self.blueberry.working = False
+        self.blueberry.stop()
+        self.blueberry.initialize()
+        self.parameter_signal.emit(CAMERA_FPS, self.sliderFrameRate.value())
+        self.parameter_signal.emit(CAMERA_REPEAT, self.sliderRepeat.value())
+        self.parameter_signal.emit(CAMERA_GAIN, 100)
+        self.parameter_signal.emit(CAMERA_EXPOSURE_TIME, 500)
+        self.blackberry.initialize()
         setup = SetupWindow(self)
         self.dialog = True
         r = setup.return_para()
