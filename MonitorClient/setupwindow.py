@@ -26,8 +26,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.setupUi(self)
         self.tabWidget.setCurrentIndex(0)
 
-        self.changed = False
-
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
         handler = LogStringHandler(self.textConnectionLog)
@@ -74,7 +72,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.sliderY0.setSingleStep(1)
             self.sliderWidth.setSingleStep(1)
             self.sliderHeight.setSingleStep(1)
-    
+
     # Common Methods
     def initialize_parameter(self):
         self.camera_connected = self.controller_connected = self.photo_setup = self.select_ROI = self.calibrated = False
@@ -144,9 +142,16 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
         self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
+        
+        self.lineGain.setValidator(QIntValidator(self))
+        self.lineExposureTime.setValidator(QIntValidator(self))
+        self.lineGain.textEdited.connect(lambda: self.set_photo_para(CAMERA_GAIN, slider=False))
+        self.lineExposureTime.textEdited.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME, slider=False))
 
-        self.sliderGain.sliderReleased.connect(lambda: self.take_a_picture())
-        self.sliderExposureTime.sliderReleased.connect(lambda: self.take_a_picture())
+        self.pushApplyConf.clicked.connect(self.take_a_picture)
+
+        #self.sliderGain.sliderReleased.connect(lambda: self.take_a_picture())
+        #self.sliderExposureTime.sliderReleased.connect(lambda: self.take_a_picture())
 
         self.sliderX0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_X0))
         self.sliderY0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_Y0))
@@ -318,16 +323,25 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.draw_image()
 
     ### Methods for Photo
-    def set_photo_para(self, idx):
+    def set_photo_para(self, idx, slider=True):
         if self.camera_connected:
-            self.changed = True
             if idx == CAMERA_GAIN:
-                self.gain = self.sliderGain.value()
-                self.lineGain.setText(str(self.sliderGain.value()))
+                if slider:
+                    self.gain = self.sliderGain.value()
+                    self.lineGain.setText(str(self.sliderGain.value()))
+                else:
+                    if self.lineGain.text() == '': return
+                    self.gain = int(self.lineGain.text())
+                    self.sliderGain.setValue(self.gain)
                 self.send_signal_to_blueberry.emit(idx, self.gain)
             elif idx == CAMERA_EXPOSURE_TIME:
-                self.exposure_time = self.sliderExposureTime.value()
-                self.lineExposureTime.setText(str(self.sliderExposureTime.value()))
+                if slider:
+                    self.exposure_time = self.sliderExposureTime.value()
+                    self.lineExposureTime.setText(str(self.sliderExposureTime.value()))
+                else:
+                    if self.lineExposureTime.text() == '': return
+                    self.exposure_time = int(self.lineExposureTime.text())
+                    self.sliderExposureTime.setValue(self.exposure_time)
                 self.send_signal_to_blueberry.emit(idx, self.exposure_time)
             elif idx == CAMERA_ROI_X0:
                 self.ROI[0][0] = round(self.captured_image.shape[1] * self.sliderX0.value() / 1000.0)
@@ -353,6 +367,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         if (idx == i for i in [CAMERA_GAIN, CAMERA_EXPOSURE_TIME, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
             if self.camera_connected:
                 if self.captured_image is None:
+                    print("MELONA!")
                     self.captured_image = self.parent.blueberry.take_a_picture(True)
 
     def take_a_picture(self):
@@ -725,10 +740,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             relpy = QMessageBox.warning(self, 'Message', msg)
             return
 
-        #if self.changed:
-        #    msg = "Camera Parameter was changed. Please, calibrate again."
-        #    reply = QMessageBox.warning(self, 'Message', msg)
-        #    return
         self.accept()
 
     def click_cancel(self):

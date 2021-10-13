@@ -257,20 +257,18 @@ class Blueberry(QThread):
                 
                     minimum = self.camera.ExposureTimeRaw.Min
                     maximum = self.camera.ExposureTimeRaw.Max
-                    exposure_time = round(self.exposure_time * 1000.0)
                     try:
-                        if self.camera.ExposureTimeRaw.GetValue() != exposure_time:
-                            if minimum <= exposure_time <= maximum:
-                                self.camera.ExposureTimeRaw.SetValue(exposure_time)
+                        if self.camera.ExposureTimeRaw.GetValue() != self.exposure_time:
+                            if minimum <= self.exposure_time <= maximum:
+                                self.camera.ExposureTimeRaw.SetValue(self.exposure_time)
                     except:
                         pass
                 
                     minimum = self.camera.GainRaw.Min
                     maximum = self.camera.GainRaw.Max
-                    delta = maximum - minimum
-                    gain = minimum + round(0.01 * self.gain * delta)
+                    gain = round(minimum + round((maximum - minimum) * self.gain / 100.0))
                     try:
-                        if self.camera.GainRaw.SetValue() != gain:
+                        if self.camera.GainRaw.GetValue() != gain:
                             self.camera.GainRaw.SetValue(gain)
                     except:
                         pass
@@ -382,6 +380,8 @@ class Blueberry(QThread):
 
     def slice_image(self, image):
         if self.ROI == [[0,0],[0,0]]: return image
+        if [self.ROI[1][0], self.ROI[1][1]] == [image.shape[1], image.shape[0]]: return image
+
         x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
         src = image.copy()
         image = src[y:y+height, x:x+width]
@@ -400,17 +400,17 @@ class Blueberry(QThread):
             with Vimba.get_instance() as vimba:
                 cams = vimba.get_all_cameras()
                 with cams[0] as cam:
-                    if cam.ExposureTimeAbs.get() != round(self.exposure_time * 1000.0): 
+                    if cam.ExposureTimeAbs.get() != self.exposure_time: 
                         try:
                             minimum, maximum = cam.ExposureTimeAbs.get_range()
-                            if minimum <= round(self.exposure_time * 1000.0) <= maximum:
+                            if minimum <= self.exposure_time <= maximum:
                                 cam.ExposureAuto.set('Off')
-                                cam.ExposureTimeAbs.set(round(self.exposure_time * 1000.0))
+                                cam.ExposureTimeAbs.set(self.exposure_time)
                         except(AttributeError, VimbaFeatureError):
                             pass
                         
                     minimum, maximum = cam.GainRaw.get_range()
-                    gain = minimum + round((maximum - minimum) * self.gain / 200.0)                    
+                    gain = minimum + round((maximum - minimum) * self.gain / 100.0)                    
                     if cam.GainRaw.get() != gain:
                         try:
                             cam.GainAuto.set('Off')
@@ -427,20 +427,19 @@ class Blueberry(QThread):
             self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
             minimum = self.camera.ExposureTimeRaw.Min
             maximum = self.camera.ExposureTimeRaw.Max
-            exposure_time = round(self.exposure_time * 1000.0)
             try:
-                if self.camera.ExposureTimeRaw.GetValue() != exposure_time:
-                    if minimum <= round(self.exposure_time * 1000.0) <= maximum:
-                        self.camera.ExposureTimeRaw.SetValue(round(self.exposure_time * 1000.0))
+                if self.camera.ExposureTimeRaw.GetValue() != self.exposure_time:
+                    if minimum <= self.exposure_time <= maximum:
+                        self.camera.ExposureTimeRaw.SetValue(self.exposure_time)
             except:
                 pass
                 
             minimum = self.camera.GainRaw.Min
             maximum = self.camera.GainRaw.Max
-            delta = maximum - minimum
-            gain = minimum + round(0.01 * self.gain * delta)
+            gain = round(minimum + round((maximum - minimum) * self.gain / 100.0))
             try:
-                if self.camera.GainRaw.SetValue() != gain:
+                print(type(gain), gain, self.gain)
+                if self.camera.GainRaw.GetValue() != gain:
                     self.camera.GainRaw.SetValue(gain)
             except:
                 pass
@@ -567,9 +566,9 @@ class Blueberry(QThread):
         # OpenCV can not control IP webcam's parameters...
         ### Camera Control
         if self.idx == CAMERA_GAIN:
-            self.gain = value
+            self.gain = float(value)
         elif self.idx == CAMERA_EXPOSURE_TIME:
-            self.exposure_time = float(value)
+            self.exposure_time = round(value)
         elif self.idx == CAMERA_FPS:
             self.frame = int(value)
         elif self.idx == CAMERA_REPEAT:
