@@ -73,6 +73,13 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.sliderWidth.setSingleStep(1)
             self.sliderHeight.setSingleStep(1)
 
+    def closeEvent(self, event):
+        reply = self.click_cancel()
+        if reply == True:
+            event.accept()
+        else:
+            event.ignore()
+
     # Common Methods
     def initialize_parameter(self):
         self.camera_connected = self.controller_connected = self.photo_setup = self.select_ROI = self.calibrated = False
@@ -747,8 +754,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         if reply == QMessageBox.Yes:
             self.initialize_parameter()
             self.reject()
+            return True
         else:
-            return
+            return False
 
     def return_para(self):
         return super().exec_()

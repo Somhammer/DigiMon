@@ -460,8 +460,11 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
         self.update_plots()
 
     def closeEvent(self, event):
-        self.click_cancel()
-
+        reply = self.click_cancel()
+        if reply == True:
+            event.accept()
+        else:
+            event.ignore()
     def click_ok(self):
         self.logger_signal.emit('INFO', str(f"Measured Emittance"))
         self.accept()
@@ -470,8 +473,9 @@ class EmittanceWindow(QDialog, Ui_EmittanceWindow):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to cancel it?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.reject()
+            return True
         else:
-            return
+            return False
 
     def return_para(self):
         return super().exec_()
