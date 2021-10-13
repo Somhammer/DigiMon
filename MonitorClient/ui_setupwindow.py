@@ -8,6 +8,8 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
+import os
+
 from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
@@ -15,9 +17,14 @@ from PySide6.QtWidgets import *  # type: ignore
 
 class Ui_SetupWindow(object):
     def setupUi(self, SetupWindow):
+        base_path = os.path.abspath(os.path.dirname(__file__))
         if not SetupWindow.objectName():
             SetupWindow.setObjectName(u"SetupWindow")
+        SetupWindow.setWindowModality(Qt.ApplicationModal)
         SetupWindow.resize(1086, 769)
+        icon = QIcon()
+        icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)
+        SetupWindow.setWindowIcon(icon)
         sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -687,7 +694,7 @@ class Ui_SetupWindow(object):
         self.pushAngleUp.setObjectName(u"pushAngleUp")
         self.pushAngleUp.setMaximumSize(QSize(30, 16777215))
         icon = QIcon()
-        icon.addFile(u"../MonitorClient/icons/up.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon.addFile(os.path.join(base_path, 'icons', 'up.png'), QSize(), QIcon.Normal, QIcon.Off)
         self.pushAngleUp.setIcon(icon)
 
         self.gridLayout_11.addWidget(self.pushAngleUp, 0, 2, 1, 1)
@@ -696,7 +703,7 @@ class Ui_SetupWindow(object):
         self.pushAngleDown.setObjectName(u"pushAngleDown")
         self.pushAngleDown.setMaximumSize(QSize(30, 16777215))
         icon1 = QIcon()
-        icon1.addFile(u"../MonitorClient/icons/down.png", QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(os.path.join(base_path, 'icons', 'down.png'), QSize(), QIcon.Normal, QIcon.Off)
         self.pushAngleDown.setIcon(icon1)
 
         self.gridLayout_11.addWidget(self.pushAngleDown, 0, 3, 1, 1)
