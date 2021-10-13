@@ -39,8 +39,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.initialize_parameter()
         self.set_action()
 
-        print(self.parent.blueberry.connected)
-
         self.show()
 
     def keyPressEvent(self, event):
@@ -374,7 +372,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         if (idx == i for i in [CAMERA_GAIN, CAMERA_EXPOSURE_TIME, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
             if self.camera_connected:
                 if self.captured_image is None:
-                    print("MELONA!")
                     self.captured_image = self.parent.blueberry.take_a_picture(True)
 
     def take_a_picture(self):

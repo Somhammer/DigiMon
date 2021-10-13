@@ -438,7 +438,6 @@ class Blueberry(QThread):
             maximum = self.camera.GainRaw.Max
             gain = round(minimum + round((maximum - minimum) * self.gain / 100.0))
             try:
-                print(type(gain), gain, self.gain)
                 if self.camera.GainRaw.GetValue() != gain:
                     self.camera.GainRaw.SetValue(gain)
             except:
@@ -471,7 +470,6 @@ class Blueberry(QThread):
         return image
             
     def show_screen(self, image):
-        #print(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f'))
         if not self.connected: return
         if not self.working: return
 
