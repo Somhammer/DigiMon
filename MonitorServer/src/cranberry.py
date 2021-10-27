@@ -11,6 +11,13 @@ import logging
 import socket
 import threading
 
+import_GPIO = False
+try:
+    import RPi.GPIO as GPIO
+    import_GPIO = True
+except ImportError:
+    import_GPIO = False
+
 from src.variables import *
 
 class Cranberry():
@@ -59,16 +66,22 @@ class Cranberry():
 
     def communicate_by_thread(self, client_socket, addr):
         self.logger.info(f"Connectd at {addr[0]}:{addr[1]}")
+        if import_GPIO:
+            self.open_GPIO()
         while True:
+            try:
+                reply = self.test_GPIO_1()
+            except:
+                continue
             try:
                 command = client_socket.recv(1024)
                 if not command: 
                     break
                 self.logger.info(f"Received from {addr[0]}:{addr[1]}: {command.decode()}")
                 #reply = self.simple_test(command)
-                reply = self.rpi_test(command.decode())
+                reply = self.test_GPIO_2(command.decode())
                 #reply = self.handle_screen(command.decode())
-                client_socket.send(reply)
+                client_socket.send(reply.encode())
                 if any(i in command.decode().lower() for i in ['quit','exit','q']):
                     self.close = True
                     break
@@ -76,56 +89,59 @@ class Cranberry():
                 break
         
         self.logger.info(f"Disconnectd at {addr[0]}:{addr[1]}")
+        if import_GPIO:
+            self.close_GPIO()
         client_socket.close()
 
     def simple_test(self, command):
         return command
 
-    def rpi_test(self, command):
-        import time
-        import RPi.GPIO as GPIO
-
+    def open_GPIO(self):
         GPIO.setmode(GPIO.BCM)
-        LED = 17
-        SWITCH = 27
-        GPIO.setup(SWITCH, GPIO.IN)
-        GPIO.setup(LED, GPIO.OUT)
+        GPIO.setup([LU, LD], GPIO.IN)
+        GPIO.setup(SOLVAL, GPIO.OUT)
+
+    def close_GPIO(self):
+        GPIO.cleanup()
+
+    def test_GPIO_1(self):
+        import time
+
+        switch = LU
+        led = SOLVAL
+        switch_status = GPIO.input(switch)
+        while(True):
+            if switch_status == 1:
+                GPIO.output(led, True)
+                time.sleep(1)
+                GPIO.output(led, False)
+                time.sleep(1)
+            else:
+                break
+
+    def test_GPIO_2(self, command):
+        led = SOLVAL
         reply = ''
         try:
-            switch = GPIO.input(SWITCH)
-            if switch:
-                while(True):
-                    status = GPIO.input(SWITCH)
-                    if status != 1:
-                        break
-                    GPIO.output(LED, True)
-                    time.sleep(2)
-                    GPIO.output(LED, False)
-                    time.sleep(2)
-
             if command == 'up':
                 try:
-                    GPIO.output(LED, True)
+                    GPIO.output(led, True)
                     reply = 'Turn on the led'
                 except:
                     reply = 'Fail to turn on the led'
             elif command == 'down':
                 try:
-                    GPIO.output(LED, False)
+                    GPIO.output(led, False)
                     reply = 'Turun off the led'
                 except:
                     reply = 'Fail to turn off the led'
         except:
             self.logger.exception("Problem handling request")
         finally:
-            GPIO.output(LED, False)
             return reply
 
     def handle_screen(self, command):
-        import RPi.GPIO as GPIO
-
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup([LU, LD], GPIO.IN)
         GPIO.setup(SOLVAL, GPIO.OUT)
         GPIO.output(SOLVAL, False)
 
