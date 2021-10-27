@@ -65,7 +65,8 @@ class Cranberry():
                 if not command: 
                     break
                 self.logger.info(f"Received from {addr[0]}:{addr[1]}: {command.decode()}")
-                reply = self.simple_test(command)
+                #reply = self.simple_test(command)
+                reply = self.rpi_test(command.decode())
                 #reply = self.handle_screen(command.decode())
                 client_socket.send(reply)
                 if any(i in command.decode().lower() for i in ['quit','exit','q']):
@@ -79,6 +80,46 @@ class Cranberry():
 
     def simple_test(self, command):
         return command
+
+    def rpi_test(self, command):
+        import time
+        import RPi.GPIO as GPIO
+
+        GPIO.setmode(GPIO.BCM)
+        LED = 17
+        SWITCH = 27
+        GPIO.setup(SWITCH, GPIO.IN)
+        GPIO.setup(LED, GPIO.OUT)
+        reply = ''
+        try:
+            switch = GPIO.input(SWITCH)
+            if switch:
+                while(True):
+                    status = GPIO.input(SWITCH)
+                    if status != 1:
+                        break
+                    GPIO.output(LED, True)
+                    time.sleep(2)
+                    GPIO.output(LED, False)
+                    time.sleep(2)
+
+            if command == 'up':
+                try:
+                    GPIO.output(LED, True)
+                    reply = 'Turn on the led'
+                except:
+                    reply = 'Fail to turn on the led'
+            elif command == 'down':
+                try:
+                    GPIO.output(LED, False)
+                    reply = 'Turun off the led'
+                except:
+                    reply = 'Fail to turn off the led'
+        except:
+            self.logger.exception("Problem handling request")
+        finally:
+            GPIO.output(LED, False)
+            return reply
 
     def handle_screen(self, command):
         import RPi.GPIO as GPIO
