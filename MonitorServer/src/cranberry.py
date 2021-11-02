@@ -67,25 +67,21 @@ class Cranberry():
     def communicate_by_thread(self, client_socket, addr):
         self.logger.info(f"Connectd at {addr[0]}:{addr[1]}")
         if import_GPIO:
-            self.open_GPIO()
+            self.set_GPIO()
         while True:
-            try:
-                reply = self.test_GPIO_1()
-            except:
-                continue
             try:
                 command = client_socket.recv(1024)
                 if not command: 
                     break
                 self.logger.info(f"Received from {addr[0]}:{addr[1]}: {command.decode()}")
-                #reply = self.simple_test(command)
-                reply = self.test_GPIO_2(command.decode())
-                #reply = self.handle_screen(command.decode())
+                reply = self.handle_screen(command.decode())
                 client_socket.send(reply.encode())
                 if any(i in command.decode().lower() for i in ['quit','exit','q']):
                     self.close = True
+                    self.logger.info(f"Received the disconnect command.")
                     break
-            except ConnectionResetError as err:
+            except ConnectionError as err:
+                self.logger.error(f"The connection is broken.")
                 break
         
         self.logger.info(f"Disconnectd at {addr[0]}:{addr[1]}")
@@ -93,87 +89,69 @@ class Cranberry():
             self.close_GPIO()
         client_socket.close()
 
-    def simple_test(self, command):
-        return command
-
-    def open_GPIO(self):
+    def set_GPIO(self):
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup([LU, LD], GPIO.IN)
-        GPIO.setup(SOLVAL, GPIO.OUT)
+        #GPIO.setwarnings(False)
+        GPIO.setup([UPPER_SWITCH, LOWER_SWITCH], GPIO.IN)
+        GPIO.setup(RELAY, GPIO.OUT)
+
+        self.last_switch = None
 
     def close_GPIO(self):
         GPIO.cleanup()
 
-    def test_GPIO_1(self):
-        import time
-
-        switch = LU
-        led = SOLVAL
-        switch_status = GPIO.input(switch)
-        while(True):
-            if switch_status == 1:
-                GPIO.output(led, True)
-                time.sleep(1)
-                GPIO.output(led, False)
-                time.sleep(1)
-            else:
-                break
-
-    def test_GPIO_2(self, command):
-        led = SOLVAL
-        reply = ''
+    def handle_screen(self, command):
+        if any(command == i for i in ['up', 'down', 'status']): return ''
+        reply = ""
         try:
-            if command == 'up':
-                try:
-                    GPIO.output(led, True)
-                    reply = 'Turn on the led'
-                except:
-                    reply = 'Fail to turn on the led'
-            elif command == 'down':
-                try:
-                    GPIO.output(led, False)
-                    reply = 'Turun off the led'
-                except:
-                    reply = 'Fail to turn off the led'
+            upper_switch_status = int(GPIO.input(UPPER_SWITCH) + 10)
+            lower_switch_status = int(GPIO.input(LOWER_SWITCH) + 10)
         except:
-            self.logger.exception("Problem handling request")
-        finally:
+            self.logger.exception("Switches are not connected. Please, handle the problem.")
             return reply
 
-    def handle_screen(self, command):
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(SOLVAL, GPIO.OUT)
-        GPIO.output(SOLVAL, False)
-
-        def actuator_status():
-            LU_status = GPIO.input(LU)
-            LD_status = GPIO.input(LD)
-            if LU_status == 1 and LD_status == 1:
-                return 'middle'
-            elif LU_status == 0 and LD_status == 1:
-                return 'down'
-            elif LU_status == 1 and LD_status == 0:
-                return 'up'
+        if upper_switch_status == SWITCH_OFF and lower_switch_status == SWITCH_OFF:
+            if self.last_switch == UPPER_SWITCH:
+                actuator_status = ACTUATOR_GOES_DOWN
+            elif self.last_switch == LOWER_SWITCH:
+                actuator_status = ACTUATOR_GOES_UP
             else:
-                return 'error'
+                actuator_status = ACTUATOR_ERROR
+        elif upper_switch_status == SWITCH_OFF and lower_switch_status == SWITCH_ON:
+            actuator_status = ACTUATOR_UP
+            self.last_switch = UPPER_SWITCH
+        elif upper_switch_status == SWITCH_ON and lower_switch_status == SWITCH_OFF:
+            actuator_status = ACTUATOR_DOWN
+            self.last_switch = LOWER_SWITCH
+        else:
+            actuator_status = ACTUATOR_ERROR
 
-        reply = ''
+        if actuator_status == ACTUATOR_ERROR:
+            self.logger.exceptioin("The actuator cannot catch the position itself. Please, handle the problem.")
+            return reply
+
         try:
             if command == 'status':
-                reply = actuator_status()
+                if actuator_status == ACTUATOR_UP:
+                    self.logger.info("Status: the screen is up.")
+                    reply = "The screen is up."
+                elif actuator_status == ACTUATOR_DOWN:
+                    self.logger.info("Status: the screen is down.")
+                    reply = "The screen is down."
+                elif actuator_status == ACTUATOR_GOES_DOWN:
+                    self.logger.info("Status: the screen goes down.")
+                    reply = "The screen goes down."
+                elif actuator_status == ACTUATOR_GOES_UP:
+                    self.logger.info("Status: the screen goes up.")
+                    reply = "The screen goes up."
             elif command == 'up':
-                try:
-                    GPIO.output(SOLVAL, False)
-                    reply = 'ok'
-                except:
-                    reply = 'no'
+                GPIO.output(RELAY, False)
+                reply = 'The relay switch is off. The screen will be up.'
             elif command == 'down':
-                try:
-                    GPIO.output(SOLVAL, True)
-                    reply = 'ok'
-                except:
-                    reply = 'no'
+                GPIO.output(RELAY, True)
+                reply = 'The relay switch is on. The screen will be down.'
         except:
-            self.logger.exception("Problem handling request")
+            self.logger.exception("Problem handling request.")
+            reply = f"Problem occurs while running command {command}. Please, handle the problem."
         finally:
             return reply
