@@ -127,7 +127,7 @@ class Cranberry():
             actuator_status = ACTUATOR_ERROR
 
         if actuator_status == ACTUATOR_ERROR:
-            self.logger.exceptioin("The actuator cannot catch the position itself. Please, handle the problem.")
+            self.logger.exception("The actuator cannot catch the position itself. Please, handle the problem.")
             return reply
 
         try:
