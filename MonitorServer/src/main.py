@@ -9,7 +9,7 @@ from src.variables import *
 from src.cranberry import *
 
 if __name__ == '__main__':
-    opt = input("...Choose server connection type: tcp/ca")
+    opt = input("...Choose server connection type tcp/ca: ")
     if not any(str(opt).lower() == i for i in ['tcp', 'ca']):
         print(f"Wrong option: {str(opt)}")
         sys.exit()
