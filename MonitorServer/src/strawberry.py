@@ -18,6 +18,9 @@ from caproto.server import PVGroup, pvproperty, ioc_arg_parser, run
 from src.variables import *
 
 class Strawberry(PVGroup):
+    """
+    X-ray Scintillator screen beam profile monitor control system
+    """
     request = pvproperty(value=0, doc="Control command")
     low = pvproperty(value=0, doc='Lower limit switch')
     high = pvproperty(value=0, doc='Upper limit switch')
