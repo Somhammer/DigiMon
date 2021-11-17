@@ -15,6 +15,7 @@ from PySide6.QtGui import *
 
 from logger import LogStringHandler
 from variables import *
+import utilities as ut
 from custom_classes import DigiLabel
 from ui_setupwindow import Ui_SetupWindow
 
@@ -31,8 +32,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         handler = LogStringHandler(self.textConnectionLog)
         self.logger.addHandler(handler)
 
-        self.labelOrigin = DigiLabel(self.labelOrigin)
         self.labelImage = DigiLabel(self.labelImage)
+        self.gridLayout.addWidget(self.labelImage, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
+
+        self.labelOrigin = DigiLabel(self.labelOrigin)
+        self.gridLayout_9.addWidget(self.labelOrigin, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
+
 
         self.ratio_width = self.ratio_height = 1
 
@@ -57,6 +62,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.sliderY0.setSingleStep(100)
                 self.sliderWidth.setSingleStep(100)
                 self.sliderHeight.setSingleStep(100)
+                self.draw_square = True
         elif self.tabWidget.currentIndex() == 2:
             if event.modifiers() & Qt.ControlModifier:
                 if any(i == event.key() for i in [Qt.Key_Right, Qt.Key_Left, Qt.Key_Up, Qt.Key_Down]):
@@ -70,6 +76,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.sliderY0.setSingleStep(1)
             self.sliderWidth.setSingleStep(1)
             self.sliderHeight.setSingleStep(1)
+            self.draw_square = False
 
     def closeEvent(self, event):
         reply = self.click_cancel()
@@ -80,27 +87,46 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
     # Common Methods
     def initialize_parameter(self):
-        self.camera_connected = self.controller_connected = self.photo_setup = self.select_ROI = self.calibrated = False
+        self.camera_connected = self.controller_connected = self.select_ROI = self.calibrated = self.draw_square = False
 
         self.camera_sdk = self.comboSDKType.currentText()
 
-        self.backup_image = None
-
         self.captured_image = None
+        self.captured_image_aratio = None
+        self.captured_image_screen_size = (550, 550)
+        self.captured_image_backup = None
+
         self.calibration_image = None
+        self.calibration_image_aratio = None
         self.calibration_image_name = ""
-        self.calibration_screen_size = (450, 450)
+        self.calibration_image_screen_size = (450, 450)
+        self.calibration_image_backup = None
 
-        self.resized_capimage = None
-        self.resized_calimage = None
+        self.labelImage.resize(self.captured_image_screen_size[0], self.captured_image_screen_size[1])
+        self.labelOrigin.resize(self.calibration_image_screen_size[0], self.calibration_image_screen_size[1])
+        self.labelTrans.resize(self.calibration_image_screen_size[0], self.calibration_image_screen_size[1])
 
-        self.gain = 100
-        self.exposure_time = 500
+        self.perspective_method = None
+        self.perspective_para = {
+            "Rectangle":{
+                "OriginalPoint":[[0,0],[0,0],[0,0],[0,0]],
+                "RealLength":[0.0,0.0],
+                "PixelSize":[0,0]
+            },
+            "Points":{
+                "OriginalPoint":[[0,0],[0,0],[0,0],[0,0]],
+                "RealCoordinate":[[0,0],[0,0],[0,0],[0,0]],
+            }
+        }
+
+        self.gain = 50
+        self.exposure_time = 30000
         self.ROI = [[0,0], [0,0]] # [(StartPoint), (width, height)]
 
         self.filter_code = self.filter_para = None
+        self.calibration_angle = 0
 
-        self.original_points = self.destination_points = self.resized_points = self.mm_per_pixel = []
+        self.original_points = self.destination_points = self.resized_points = self.pixel_per_mm = []
 
     def set_checked(self, checkbox, state):
         if state:
@@ -110,20 +136,20 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             checkbox.setCheckable(False)
     
     def set_action(self):
+        # Signal
         self.send_signal_to_blueberry.connect(self.parent.blueberry.receive_signal)
+        # Outside tab widgets
+        self.pushSave.clicked.connect(self.save)
+        self.pushLoad.clicked.connect(lambda: self.load())
+        self.pushOk.clicked.connect(self.click_ok)
+        self.pushCancel.clicked.connect(self.click_cancel)
 
-        # Setup
         base_path = os.path.abspath(os.path.dirname(__file__))
         self.comboSetup.addItem('')
         for item in os.listdir(os.path.join(base_path, 'setup')):
             if any(item.endswith(i) for i in ['yaml','yml']):
                 self.comboSetup.addItem(os.path.join(base_path, 'setup', item))
         self.comboSetup.currentTextChanged.connect(lambda: self.load(self.comboSetup.currentText()))
-
-        self.pushSave.clicked.connect(self.save)
-        self.pushLoad.clicked.connect(lambda: self.load())
-        self.pushOk.clicked.connect(self.click_ok)
-        self.pushCancel.clicked.connect(self.click_cancel)
 
         # Connection
         self.lineControllerIP1.setValidator(QIntValidator(self))
@@ -143,7 +169,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         # Photo
         self.labelImage.move.connect(self.set_ROI)
         self.labelImage.ldclicked.connect(self.apply_ROI)
-        self.labelImage.rdclicked.connect(self.reset_ROI)
+        self.labelImage.rdclicked.connect(lambda: self.apply_ROI(True))
 
         self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
         self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
@@ -155,9 +181,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.pushApplyConf.clicked.connect(self.take_a_picture)
 
-        #self.sliderGain.sliderReleased.connect(lambda: self.take_a_picture())
-        #self.sliderExposureTime.sliderReleased.connect(lambda: self.take_a_picture())
-
         self.sliderX0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_X0))
         self.sliderY0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_Y0))
         self.sliderWidth.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_WIDTH))
@@ -165,26 +188,32 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.comboFilter.currentTextChanged.connect(self.load_filter_parameters)
 
-        self.pushFilterApply.clicked.connect(self.draw_image)
+        self.pushFilterApply.clicked.connect(lambda: self.draw_image(self.captured_image, self.labelImage, self.captured_image_screen_size, self.captured_image_aratio))
 
         # Calibration
-        self.lineRotationAngle.setValidator(QDoubleValidator(0.0, 360.0, 2))
-        self.lineRotationAngle.editingFinished.connect(self.rotate_image)
+        ### Basic button & image
+        self.labelOrigin.clicked.connect(self.draw_circle)
+        self.pushOpenImage.clicked.connect(self.open_calibration_image)
+        self.pushCalCapture.clicked.connect(self.capture_calibration_image)
+        self.pushConvert.clicked.connect(self.convert_image)
+        ### Rotation
+        self.lineRotationAngle.setValidator(QDoubleValidator(0.0, 360.0, 3))
+        self.lineRotationAngle.editingFinished.connect(lambda: self.draw_calibration_image(self.calibration_image))
         self.pushAngleUp.clicked.connect(lambda: self.set_rotation_angle(True))
         self.pushAngleDown.clicked.connect(lambda: self.set_rotation_angle(False))
-        self.labelOrigin.clicked.connect(self.draw_circle)
-
-        def set_linevalue(width, height):
-            if width == '': width = 1.0
-            if height == '': height = 1.0
-            self.mm_per_pixel = [float(width), float(height)]
-
-        self.linePixelWidth.editingFinished.connect(lambda: set_linevalue(self.linePixelWidth.text(), self.linePixelHeight.text()))
-        self.linePixelHeight.editingFinished.connect(lambda: set_linevalue(self.linePixelWidth.text(), self.linePixelHeight.text()))
-
-        #self.pushSave.clicked.connect(self.save)
-        self.pushOpenImage.clicked.connect(lambda: self.open())
-        self.pushConvert.clicked.connect(self.convert_image)
+        ### Perspective matrix
+        ##### Rectangle
+        self.linePixelPerMM_x.setValidator(QDoubleValidator(0.0, 9999.99, 2))
+        self.linePixelPerMM_y.setValidator(QDoubleValidator(0.0, 9999.99, 2))
+        ##### Points
+        self.lineQuad1x.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad1y.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad2x.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad2y.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad3x.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad3y.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad4x.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
+        self.lineQuad4y.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
 
     def save(self, last=False):
         base_path = os.path.abspath(os.path.dirname(__file__))
@@ -201,8 +230,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         fout = open(fname, 'w')
         fout.write(textwrap.dedent(f"""\
             Auto: {str(last)}
-            CameraURL: "{camera_url}"
             CameraSDK: "{self.camera_sdk}"
+            CameraURL: "{camera_url}"
             ControllerUse: {str(self.checkUseControlServer.isChecked())}
             ControllerIP: {controller_ip}
             ControllerPort: {self.lineControllerIP5.text()}
@@ -211,12 +240,14 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             ROI: {str(self.ROI)}            
             FilterType: "{self.comboFilter.currentText()}"
             FilterParameter: {str(self.filter_para)}
-            Image: "{self.calibration_image_name}"
+            CalibrationImage: "{self.calibration_image_name}"
             Rotation: {self.lineRotationAngle.text()}
-            Original: {str(self.original_points)}
-            Destination: {str(self.destination_points)}
-            PixelLength: {str(self.mm_per_pixel)}
+            PerspectiveMatrixMethod: {str(self.perspective_method)}
             """))
+        if self.perspective_method is not None:
+            fout.write(f"PerspectiveMatrixParameters: {str(self.perspective_para[self.perspective_method])}")
+        else:
+            fout.write("PerspectiveMatrixParameters: {}")
         fout.close()
 
     def load(self, fname=''):
@@ -235,18 +266,18 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                         self.comboSDKType.setCurrentIndex(idx)
                         break
 
+                self.connect_network(self.parent.blueberry, self.checkCameraConnected)
+
                 if cfg['ControllerUse']:
                     self.checkUseControlServer.setChecked(True)
-                controller_ip = str(cfg['ControllerIP']).split('.')
-                if len(controller_ip):
-                    self.lineControllerIP1.setText(controller_ip[0]) 
-                    self.lineControllerIP2.setText(controller_ip[1])
-                    self.lineControllerIP3.setText(controller_ip[2])
-                    self.lineControllerIP4.setText(controller_ip[3])
-                self.lineControllerIP5.setText(str(cfg['ControllerPort']))
-
-                self.connect_network(self.parent.blueberry, self.checkCameraConnected)
-                self.connect_network(self.parent.blackberry, self.checkControllerConnected)
+                    controller_ip = str(cfg['ControllerIP']).split('.')
+                    if len(controller_ip):
+                        self.lineControllerIP1.setText(controller_ip[0]) 
+                        self.lineControllerIP2.setText(controller_ip[1])
+                        self.lineControllerIP3.setText(controller_ip[2])
+                        self.lineControllerIP4.setText(controller_ip[3])
+                    self.lineControllerIP5.setText(str(cfg['ControllerPort']))
+                    self.connect_network(self.parent.blackberry, self.checkControllerConnected)
                 
                 self.gain = int(cfg['Gain'])
                 self.sliderGain.setValue(self.gain)
@@ -270,13 +301,13 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                     for key, value in self.filter_para.items():
                         if widget.label.text() == key:
                             widget.linevalue.setText(str(value))
-                self.draw_image()
 
-                self.calibration_image_name = str(cfg['Image'])
+                self.calibration_image_name = str(cfg['CalibrationImage'])
                 self.lineRotationAngle.setText(str(cfg['Rotation']))
-                self.original_points = cfg['Original']
-                self.destination_points = cfg['Destination']
-                self.mm_per_pixel = cfg['PixelLength']
+                self.perspective_method = str(cfg['PerspectiveMatrixMethod'])
+                self.perspective_para = cfg['PerspectiveMatrixParameters']
+
+                self.take_a_picture()
                 self.load_calibrated_image()
 
     ### Methods for Connection
@@ -296,36 +327,33 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             if any(i.text() == '' for i in [ip1, ip2, ip3, ip4]):
                 return
             url = '.'.join(i.text() for i in [ip1, ip2, ip3, ip4])+':'+port.text()
-        
-        if berry.name == 'Network Camera' and berry.connected and berry.url == url:
-            self.set_checked(checkbox, berry.connected)
-            self.camera_connected = True
-            if self.captured_image is None:
-                self.captured_image = self.parent.blueberry.take_a_picture(True)
-            self.draw_image()
-            return
 
-        berry.connection(url)
-
-        self.logger.info(f"Try to connect to {berry.name}...")
         if berry.connected:
-            self.logger.info("Connection is succeed")
-        else:
-            self.logger.error(f"Connection is failed. Please, reconnect to {berry.name}...")
-        self.set_checked(checkbox, berry.connected)
-
-        if berry.name == "Network Camera":
-            if 'ERROR' in berry.msg:
-                msg = berry.msg.replace('ERROR','')
-                self.logger.error(msg)
-            elif 'INFO' in berry.msg:
-                msg  = berry.msg.replace('INFO','')
-                self.logger.info(msg)
-            if berry.connected:
+            self.logger.info(f"{berry.name} is already connected.")
+            self.set_checked(checkbox, berry.connected)
+            if berry.name == 'Network Camera':
                 self.camera_connected = True
-                self.captured_image = self.parent.blueberry.take_a_picture(True)
-                self.backup_image = self.captured_image.copy()
-                self.draw_image()
+            else:
+                self.controller_connected = True
+        else:
+            self.logger.info(f"Try to connect to {berry.name}...")
+            message = berry.connection(url)
+            self.set_checked(checkbox, berry.connected)
+
+            if berry.name == 'Network Camera':
+                self.camera_connected = berry.connected
+            else:
+                self.controller_connected = berry.connected
+
+            if 'ERROR ' in message:
+                message = message.replace('ERROR ','')
+                self.logger.error(message)
+            elif 'INFO ' in message:
+                message  = message.replace('INFO ','')
+                self.logger.info(message)
+
+        if berry.name == 'Network Camera':
+            self.take_a_picture()
 
     ### Methods for Photo
     def set_photo_para(self, idx, slider=True):
@@ -370,70 +398,75 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.draw_rectangle()
 
         if (idx == i for i in [CAMERA_GAIN, CAMERA_EXPOSURE_TIME, CAMERA_ROI_X0, CAMERA_ROI_Y0, CAMERA_ROI_WIDTH, CAMERA_ROI_HEIGHT]):
-            if self.camera_connected:
-                if self.captured_image is None:
-                    self.captured_image = self.parent.blueberry.take_a_picture(True)
+            if self.camera_connected and self.captured_image is None:
+                self.take_a_picture()
 
-    def take_a_picture(self):
-        self.captured_image = self.parent.blueberry.take_a_picture(True)
-        self.backup_image = self.captured_image.copy()
-        self.draw_image()
-
-    def draw_image(self):
+    def take_a_picture(self, calibration=False):
         if not self.camera_connected: return
-        image = copy.deepcopy(self.captured_image)
+        self.send_signal_to_blueberry.emit(CAMERA_GAIN, self.gain)
+        self.send_signal_to_blueberry.emit(CAMERA_EXPOSURE_TIME, self.exposure_time)
+        if not calibration:
+            self.captured_image = self.parent.blueberry.take_a_picture(True)
+            if self.captured_image_aratio is None:
+                self.captured_image_aratio = float(self.captured_image.shape[1]) / float(self.captured_image.shape[0])
 
-        if self.filter_code == BKG_SUBSTRACTION:
-            background = cv2.imread(self.filter_para['background file'])
-            image = cv2.subtract(image, background)
-        if self.filter_code == GAUSSIAN_FILTER:
-            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
-            sigmaX = self.filter_para['sigmaX']
-            image = cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigmaX)
-        elif self.filter_code == MEDIAN_FILTER:
-            ksize = self.filter_para['kernal size']
-            image = cv2.medianBlur(image, ksize=ksize)
-        elif self.filter_code == BILATERAL_FILTER:
-            ksize = self.filter_para['kernal size']
-            scolor = self.filter_para['sigma color']
-            sspace = self.filter_para['sigma space']
-            image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
-
-        if self.ROI != [[0,0], [0,0]] and self.select_ROI:
-            x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
-            image = image[y:y+height, x:x+width]
-        
-        self.resized_capimage = cv2.resize(image, dsize=(550,550), interpolation=cv2.INTER_LINEAR)
-        if len(self.resized_capimage.shape) == 3:
-            height, width, channel = self.resized_capimage.shape
-            qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+            self.captured_image_backup = self.captured_image.copy()
+            self.draw_image(self.captured_image, self.labelImage, self.captured_image_screen_size, self.captured_image_aratio)
         else:
-            width, height = self.resized_capimage.shape
-            qImg = QImage(self.resized_capimage.data, width, height, width, QImage.Format_Grayscale8)
+            self.calibration_image = self.parent.blueberry.take_a_picture(True)
+            if self.calibration_image_aratio is None:
+                self.calibration_image_aratio = float(self.calibration_image.shape[1]) / float(self.calibration_image.shape[0])
+            
+            self.calibration_image_backup = self.calibration_image.copy()
+            self.draw_image(self.calibration_image, self.labelOrigin, self.calibration_image_screen_size, self.calibration_image_aratio)
+
+    def draw_image(self, image, label, screen_size, aspect_ratio):
+        image_copy = copy.deepcopy(image)
+        image_copy = ut.filter_image(image_copy, self.filter_code, self.filter_para)
+        image_copy = ut.slice_image(image_copy, self.ROI)
+
+        if aspect_ratio > 1:
+            dsize = (screen_size[0], round(screen_size[0] / aspect_ratio))
+        elif aspect_ratio < 1:
+            dsize = (round(screen_size[1] * aspect_ratio), screen_size[1])
+        else:
+            dsize = (screen_size[0], screen_size[1])
+
+        height, width = image_copy.shape[0], image_copy.shape[1]
+        if 0.99 < width / height < 1.01:
+            dsize = (screen_size[0], screen_size[1])
+
+        resized_image = cv2.resize(image_copy, dsize=dsize, interpolation=cv2.INTER_LINEAR)
+
+        if len(resized_image.shape) == 3:
+            height, width, channel = resized_image.shape
+            qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
+        else:
+            height, width = resized_image.shape
+            qImg = QImage(resized_image.data, width, height, width, QImage.Format_Grayscale8)
         pixmap = QPixmap.fromImage(qImg)
 
-        self.labelImage.resize(width, height)
-        self.labelImage.setPixmap(pixmap)
+        label.resize(width, height)
+        label.setPixmap(pixmap)
 
     def draw_rectangle(self):
-        if self.select_ROI: return
-
-        if self.resized_capimage is None: return
-
-        if len(self.resized_capimage.shape) == 3:
-            height, width, channel = self.resized_capimage.shape
-            qImg = QImage(self.resized_capimage.data, width, height, width*channel, QImage.Format_BGR888)
+        if self.select_ROI or self.captured_image_backup is None: return
+        resized_image = cv2.resize(self.captured_image_backup, dsize=(self.labelImage.width(), self.labelImage.height()), interpolation=cv2.INTER_LINEAR)
+            
+        if len(resized_image.shape) == 3:
+            height, width, channel = resized_image.shape
+            qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
         else:
-            height, width = self.resized_capimage.shape
-            qImg = QImage(self.resized_capimage.data, width, height, width, QImage.Format_Grayscale8)
+            height, width = resized_image.shape
+            qImg = QImage(resized_image.data, width, height, width, QImage.Format_Grayscale8)
         pixmap = QPixmap.fromImage(qImg)
         painter = QPainter(pixmap)
         painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
 
-        x = self.resized_capimage.shape[1] * self.sliderX0.value() / 1000.0
-        y = self.resized_capimage.shape[0] * self.sliderY0.value() / 1000.0
-        width = self.resized_capimage.shape[1] * self.sliderWidth.value() / 1000.0
-        height = self.resized_capimage.shape[0] * self.sliderHeight.value() / 1000.0
+        x = pixmap.width() * self.sliderX0.value() / 1000.0
+        y = pixmap.height() * self.sliderY0.value() / 1000.0
+        width = pixmap.width() * self.sliderWidth.value() / 1000.0
+        height = pixmap.height() * self.sliderHeight.value() / 1000.0
 
         painter.drawRect(x, y, width, height)
         painter.end()
@@ -457,25 +490,28 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         width = abs(self.labelImage.x - self.labelImage.x_end)
         height = abs(self.labelImage.y - self.labelImage.y_end)
 
+        if self.draw_square:
+            height = width
+
         self.sliderX0.setValue(x / self.labelImage.width() * 1000)
         self.sliderY0.setValue(y / self.labelImage.height() * 1000)
         self.sliderWidth.setValue(width / self.labelImage.width() * 1000)
         self.sliderHeight.setValue(height / self.labelImage.height() * 1000)
 
-    def apply_ROI(self):
-        self.select_ROI = True
-        self.draw_image()
+    def apply_ROI(self, reset=False):
+        if reset:
+            self.ROI = [[0,0],[0,0]]
 
-    def reset_ROI(self):
-        self.ROI = [[0,0],[0,0]]
+            self.sliderX0.setValue(0)
+            self.sliderY0.setValue(0)
+            self.sliderWidth.setValue(0)
+            self.sliderHeight.setValue(0)
 
-        self.sliderX0.setValue(0)
-        self.sliderY0.setValue(0)
-        self.sliderWidth.setValue(0)
-        self.sliderHeight.setValue(0)
+            self.select_ROI = False
+        else:
+            self.select_ROI = True
 
-        self.select_ROI = False
-        self.draw_image()
+        self.draw_image(self.captured_image, self.labelImage, self.captured_image_screen_size, self.captured_image_aratio)
 
     def load_filter_parameters(self):
         class Item(QWidget):
@@ -538,8 +574,38 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.listParameters.addItem(witem)
                 witem.setSizeHint(item.sizeHint())
 
+    def slice_image(self, image):
+        if self.ROI == [[0,0],[0,0]]: return image
+        if [self.ROI[1][0], self.ROI[1][1]] == [image.shape[1], image.shape[0]]: return image
+
+        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
+        src = image.copy()
+        image = src[y:y+height, x:x+width]
+        return image
+
+    def filter_image(self, image):
+        if self.filter_code == BKG_SUBSTRACTION:
+            background = cv2.imread(self.filter_para['background file'])
+            filtered_image = cv2.subtract(image, background)
+        if self.filter_code == GAUSSIAN_FILTER:
+            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
+            sigmaX = self.filter_para['sigmaX']
+            filtered_image = cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigmaX)
+        elif self.filter_code == MEDIAN_FILTER:
+            ksize = self.filter_para['kernal size']
+            filtered_image = cv2.medianBlur(image, ksize=ksize)
+        elif self.filter_code == BILATERAL_FILTER:
+            ksize = self.filter_para['kernal size']
+            scolor = self.filter_para['sigma color']
+            sspace = self.filter_para['sigma space']
+            filtered_image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
+        else:
+            filtered_image = image
+        
+        return filtered_image
+
     ### Methods for Calibration
-    def open(self):
+    def open_calibration_image(self):
         extension = ["Image file (*.bmp *.jpg *jpeg *png)"]
         fname = QFileDialog.getOpenFileName(self, "Select Image", selectedFilter=extension[0], filter='\n'.join(i for i in extension))[0]
         
@@ -549,14 +615,19 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.destination_points = []
             self.resized_points = []
             self.load_calibrated_image()
-
+    
+    ############################ 20211115 ############################
     def draw_calibration_image(self, image, origin=True):
         if image is None: return
-        resized_image = cv2.resize(image, dsize=self.calibration_screen_size, interpolation=cv2.INTER_LINEAR)
-        height, width, channel = resized_image.shape
-        qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
-        pixmap = QPixmap.fromImage(qImg)
+        #resized_image = cv2.resize(image, dsize=self.calibration_image_screen_size, interpolation=cv2.INTER_LINEAR)
+        #height, width, channel = resized_image.shape
+        #qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
+        #pixmap = QPixmap.fromImage(qImg)
         if origin:
+            angle = float(self.lineRotationAngle.text())
+            image = ut.rotate_image(image, angle)
+            self.draw_image(image, self.labelOrigin, self.calibration_image_screen_size, self.calibration_image_aratio)
+            pixmap = self.labelOrigin.pixmap()
             halflength = 100
             painter = QPainter(pixmap)
             for point in self.resized_points:
@@ -569,23 +640,43 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.labelOrigin.resize(pixmap.width(), pixmap.height())
             self.labelOrigin.setPixmap(pixmap)
         else:
+            self.draw_image(image, self.labelTrans, self.calibration_image_screen_size, self.calibration_image_aratio)
+            pixmap = self.labelTrans.pixmap()
             painter = QPainter(pixmap)
-            painter.setPen(QPen(QColor(178, 54, 245), 4, Qt.DashLine))
-            start_point = (self.destination_points[0][0] / self.ratio_width, self.destination_points[0][1] / self.ratio_height)
-            w = float(self.lineTransWidth.text())
-            h = float(self.lineTransHeight.text())
-            rwidth = w / self.ratio_width
-            rheight = h / self.ratio_height
-            painter.drawRect(start_point[0], start_point[1], rwidth, rheight)
+            if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == "Rectangle":
+                painter.setPen(QPen(QColor(178, 54, 245), 4, Qt.DashLine))
+                start_point = (self.destination_points[0][0] / self.ratio_width, self.destination_points[0][1] / self.ratio_height)
+                end_point = (self.destination_points[3][0] / self.ratio_width, self.destination_points[3][1] / self.ratio_height)
+                width = end_point[0] - start_point[0]
+                height = end_point[1] - start_point[1]
+                painter.drawRect(start_point[0], start_point[1], width, height)
+            else:
+                painter.setPen(QPen(QColor(90, 94, 99), 2 , Qt.SolidLine))
+                halflength = 100
+                for point in self.destination_points:
+                    x, y = point[0] / self.ratio_width, point[1] / self.ratio_height
+                    painter.drawLine(x - halflength, y, x + halflength, y)
+                    painter.drawLine(x, y - halflength, x, y + halflength)
             painter.end()
             self.labelTrans.resize(pixmap.width(), pixmap.height())
             self.labelTrans.setPixmap(pixmap)
 
     def load_calibrated_image(self):
         self.calibration_image = cv2.imread(self.calibration_image_name)
-        self.calibration_backup_img = self.calibration_image.copy()
-        self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_screen_size[0])
-        self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_screen_size[1])
+        self.calibration_image_backup = self.calibration_image.copy()
+        if self.calibration_image_aratio is None:
+            self.calibration_image_aratio = float(self.calibration_image.shape[1]) / float(self.calibration_image.shape[0])
+
+        if self.calibration_image_aratio > 1:
+            self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_image_screen_size[0])
+            self.ratio_height = float(self.calibration_image.shape[0] / (self.calibration_image_screen_size[0] / self.calibration_image_aratio))
+        elif self.calibration_image_aratio < 1:
+            self.ratio_width = float(self.calibration_image.shape[1] / (self.calibration_image_screen_size[0] * self.calibration_image_aratio))
+            self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
+        else:
+            self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_image_screen_size[0])
+            self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
+
         if len(self.original_points) > 0:
             for point in self.original_points:
                 x, y = point[0]/self.ratio_width, point[1]/self.ratio_height
@@ -596,49 +687,47 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             h = round(self.destination_points[1][1] - self.destination_points[0][1])
             self.lineTransWidth.setText(str(w))
             self.lineTransHeight.setText(str(h))
-
-        if len(self.mm_per_pixel) > 1:
-            self.linePixelWidth.setText(str(self.mm_per_pixel[0]))
-            self.linePixelHeight.setText(str(self.mm_per_pixel[1]))
         
         self.convert_image()
-        self.rotate_image()
         self.draw_calibration_image(self.calibration_image)
+
+    def capture_calibration_image(self):
+        self.take_a_picture(True)
+
+        if self.calibration_image_aratio > 1:
+            self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_image_screen_size[0])
+            self.ratio_height = float(self.calibration_image.shape[0] / (self.calibration_image_screen_size[0] / self.calibration_image_aratio))
+        elif self.calibration_image_aratio < 1:
+            self.ratio_width = float(self.calibration_image.shape[1] / (self.calibration_image_screen_size[0] * self.calibration_image_aratio))
+            self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
+        else:
+            self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_image_screen_size[0])
+            self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
+            
+        base_path = os.path.abspath(os.path.dirname(__file__))
+        self.calibration_image_name = os.path.join(base_path, 'setup', f"Calibration_{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
+        cv2.imwrite(self.calibration_image_name, self.calibration_image)
 
     def set_rotation_angle(self, up=True):
-        if self.sliderAngle.value() == 0:
-            unit = 0.01
-        elif self.sliderAngle.value() == 1:
-            unit = 0.1
-        elif self.sliderAngle.value() == 2:
-            unit = 1
-        elif self.sliderAngle.value() == 3:
-            unit = 10
-        else:
-            unit = 100
+        if self.sliderAngle.value() == 0: unit = 0.01
+        elif self.sliderAngle.value() == 1: unit = 0.1
+        elif self.sliderAngle.value() == 2: unit = 1
+        elif self.sliderAngle.value() == 3: unit = 10
+        else: unit = 100
+
         value = float(self.lineRotationAngle.text())
-        if up:
-            value = value + unit
-        else:
-            value = value - unit
-        if value < 0.0:
-            value = 0.0
-        elif value > 360.0:
-            value = 360.0
+        if up: value = value + unit
+        else: value = value - unit
+        value = round(value, 2)
+        
+        if value < 0.0: value = 360.0 + value
+        elif value > 360.0: value = value - 360.0
         if up:
             self.lineRotationAngle.setText(str(value))
         else:
             self.lineRotationAngle.setText(str(value))
-        self.rotate_image()
-
-    def rotate_image(self):
-        if self.calibration_image is None: return
-        center = (round(self.calibration_backup_img.shape[1]/2), round(self.calibration_backup_img.shape[0]/2))
-        angle = float(self.lineRotationAngle.text())
-        matrix = cv2.getRotationMatrix2D(center, angle, 1)
-        self.calibration_image = cv2.warpAffine(self.calibration_backup_img, matrix, (0,0))
         self.draw_calibration_image(self.calibration_image)
-
+ 
     def draw_circle(self):
         self.labelPosition.setText(f"Position: {self.labelOrigin.x}, {self.labelOrigin.y} ({int(self.labelOrigin.x*self.ratio_width)}, {int(self.labelOrigin.y*self.ratio_height)})")
         if self.labelOrigin.left:
@@ -704,25 +793,36 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 lower_right = point
 
         self.original_points = [upper_left, lower_left, upper_right, lower_right]
-        w = int(max(math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)))
-        h = int(max(math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)))
-        if not (self.lineTransWidth.text() == '' and self.lineTransHeight.text() == ''):
-            w = int(self.lineTransWidth.text())
-            h = int(self.lineTransHeight.text())
-        self.lineTransWidth.setText(str(w))
-        self.lineTransHeight.setText(str(h))
-        
-        self.destination_points = [
-            [round(half_width - w/2), round(half_height - h/2)],
-            [round(half_width - w/2), round(half_height + h/2)],
-            [round(half_width + w/2), round(half_height - h/2)],
-            [round(half_width + w/2), round(half_height + h/2)]
-        ]
-        # 좌표: 좌상, 좌하, 우상, 우하
-        transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
-        self.transformed_image = cv2.warpPerspective(self.calibration_image, transform_matrix, (self.calibration_image.shape[1], self.calibration_image.shape[0]))
+
+        if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == "Rectangle":
+            w = int(sum([math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)])/2)
+            h = int(sum([math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)])/2)
+
+            self.destination_points = [
+                [round(half_width - w/2), round(half_height - h/2)],
+                [round(half_width - w/2), round(half_height + h/2)],
+                [round(half_width + w/2), round(half_height - h/2)],
+                [round(half_width + w/2), round(half_height + h/2)]
+            ]
+            self.pixel_per_mm = [float(self.linePixelPerMM_x.text()), float(self.linePixelPerMM_y.text())]
+        else:
+            x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad2x.text()), float(self.lineQuad4y.text())
+            self.pixel_per_mm = [abs(upper_right[0] - upper_left[0])/abs(x2 - x1), abs(upper_right[1] - lower_right[1])/abs(y2 - y1)]
+
+            self.destination_points = [
+                [half_width - abs(float(self.lineQuad2x.text()))*self.pixel_per_mm[0], half_height - abs(float(self.lineQuad2y.text()))*self.pixel_per_mm[1]],
+                [half_width - abs(float(self.lineQuad3x.text()))*self.pixel_per_mm[0], half_height + abs(float(self.lineQuad3y.text()))*self.pixel_per_mm[1]],
+                [half_width + abs(float(self.lineQuad1x.text()))*self.pixel_per_mm[0], half_height - abs(float(self.lineQuad1y.text()))*self.pixel_per_mm[1]],
+                [half_width + abs(float(self.lineQuad4x.text()))*self.pixel_per_mm[0], half_height + abs(float(self.lineQuad4y.text()))*self.pixel_per_mm[1]]
+            ]
+        self.transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
+        self.calibration_angle = float(self.lineRotationAngle.text())
+        image = ut.rotate_image(self.calibration_image, self.calibration_angle)
+
+        self.transformed_image = cv2.warpPerspective(image, self.transform_matrix, (image.shape[1], image.shape[0]))
 
         self.draw_calibration_image(self.transformed_image, False)
+        print(self.pixel_per_mm)
         self.calibrated = True
 
     ### Methods for close
@@ -738,11 +838,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.camera_connected = True
         if self.checkControllerConnected.isChecked():
             self.controller_connected = True
-        if len(self.mm_per_pixel) < 1:
-            self.calibrated = False
-            msg = "Please, complite calibration. write mm per pixel."
-            relpy = QMessageBox.warning(self, 'Message', msg)
-            return
 
         self.accept()
 
@@ -757,4 +852,3 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
     def return_para(self):
         return super().exec_()
-

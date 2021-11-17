@@ -36,6 +36,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.dialog = False
 
+        self.layoutMargin = 3
+        self.layoutSpacing = 3
+
         base_path = os.path.abspath(os.path.dirname(__file__))
         self.iconRedLight = QIcon(os.path.join(base_path, 'icons', 'redlight.png'))
         self.iconGreenLight = QIcon(os.path.join(base_path, 'icons', 'greenlight.png'))
@@ -48,10 +51,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.controller_connected = False
         self.calibrated = False
 
-        self.labelViewer = DigiLabel(self.labelViewer)
+        self.labelCamera = DigiLabel(self.labelCamera)
+        self.gridLayout.addWidget(self.labelCamera, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
 
         self.__password = "profile"
-        self.blackberry = Blackberry()
+        self.blackberry = Blackberry(parent=self)
         self.blueberry = Blueberry(parent=self)
         
         self.logger = logging.getLogger()
@@ -77,16 +81,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.set_action()
 
+        #self.initialize()
+        self.main_size = [self.width(), self.height()]
+        self.showMaximized()
+        #self.show()
         self.initialize()
         self.main_size = [self.width(), self.height()]
-        self.show()
-        #self.showMaximized()
-        self.main_size = [self.width(), self.height()]
-        self.image_size = [self.wViewer.width(), self.wViewer.height()]
+        self.image_size = [self.frameCamera.width(), self.frameCamera.height()]
         self.plot_livex_size = [self.frameLiveXProfile.width(), self.frameLiveXProfile.height()]
-        self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
-        self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
-        self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
+        self.plot_livey_size = [self.frameLiveYProfile.width(), self.frameLiveYProfile.height()]
+        self.plot_profile_size = [self.frameProfile.width(), self.frameProfile.height()]
+        self.plot_beamx_size = [self.frameProfileX.width(), self.frameProfileX.height()]
+        self.plot_beamy_size = [self.frameProfileY.width(), self.frameProfileY.height()]
 
     def set_action(self):
         # Signal connection
@@ -101,8 +107,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #self.checkConnectCamera.clicked.connect(lambda: self.set_checked(self.checkConnectCamera, self.blueberry.connected))
 
         # Image Screen
-        self.labelViewer.clicked.connect(self.set_line)
-        self.labelViewer.move.connect(self.set_line)
+        self.labelCamera.clicked.connect(self.set_line)
+        self.labelCamera.move.connect(self.set_line)
 
         # Camera Setup
         self.pushSetup.clicked.connect(self.setup_camera)
@@ -122,8 +128,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushFilpRightLeft.clicked.connect(lambda: self.parameter_signal.emit(CAMERA_FLIP_RIGHT_LEFT, 1))
 
         # Screen Zoom
-        self.pushZoomIn.clicked.connect(lambda: self.blackberry.send_command('down'))
-        self.pushZoomOut.clicked.connect(lambda: self.blackberry.send_command('up'))
+        self.pushScreenDown.clicked.connect(lambda: self.blackberry.send_command('down'))
+        self.pushScreenUp.clicked.connect(lambda: self.blackberry.send_command('up'))
 
         # Emittance Measurement
         self.pushEmittance.clicked.connect(self.measure_emittance)
@@ -154,39 +160,59 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plotLiveX = pg.PlotWidget()
         self.plotLiveX.setBackground('w')
         self.plotLiveX.showGrid(x=True, y=True)
-        self.plotLiveX.setLabel('bottom', 'Horizontal')
+        self.plotLiveX.hideAxis('left')
+        self.plotLiveX.hideAxis('bottom')
+        #self.plotLiveX.setLabel('bottom', 'Horizontal')
+        self.plotLiveX.setLabel('top', 'Horizontal', 'mm')
+        #self.plotLiveX.setMaximumSize(9999, 120)
+        #self.plotLiveX.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.liveXCurve = self.plotLiveX.plot(pen=bluePen)
         self.gridLiveXProfile.addWidget(self.plotLiveX)
+        #self.plotLiveX.resize(self.frameLiveXProfile.width()-self.layoutMargin, self.frameLiveXProfile.height()-self.layoutMargin)
 
         self.plotLiveY = pg.PlotWidget()
         self.plotLiveY.setBackground('w')
         self.plotLiveY.showGrid(x=True, y=True)
-        self.plotLiveY.setLabel('bottom', 'Vertical')
+        self.plotLiveY.hideAxis('bottom')
+        self.plotLiveY.hideAxis('left')
+        self.plotLiveY.setLabel('right', 'Vertical', 'mm')
+        #self.plotLiveY.setLabel('bottom', 'Vertical')
         self.liveYCurve = self.plotLiveY.plot(pen=bluePen)
         self.gridLiveYProfile.addWidget(self.plotLiveY)
+        self.plotLiveY.resize(self.frameLiveYProfile.width()-self.layoutMargin, self.frameLiveYProfile.height()-self.layoutMargin)
 
-        self.plotProfile = pg.PlotWidget(title="Beam Profile")
+        self.plotProfile = pg.PlotWidget(size=(self.frameProfile.width()-self.layoutMargin, self.frameProfile.height()-self.layoutMargin))
         self.plotProfile.setBackground('w')
         self.plotProfile.showGrid(x=True, y=True)
         self.plotProfile.setLabel('left', 'Vertical', 'mm')
         self.plotProfile.setLabel('bottom', 'Horizontal', 'mm')
         self.gridProfile.addWidget(self.plotProfile)
+        self.plotProfile.setMinimumSize(self.frameProfile.width()-self.layoutMargin, self.frameProfile.height()-self.layoutMargin)
+        #self.plotProfile.setMaximumSize(self.frameProfile.width()-self.layoutMargin, self.frameProfile.height()-self.layoutMargin)
+        #self.plotProfile.resize(self.frameProfile.width()-self.layoutMargin, self.frameProfile.height()-self.layoutMargin)
 
-        self.plotProfileX = pg.PlotWidget(title="Horizontal axis intensity")
+        self.plotProfileX = pg.PlotWidget()
         self.plotProfileX.setBackground('w')
         self.plotProfileX.showGrid(x=True, y=True)
         self.plotProfileX.setLabel('left', 'Intensity', '%')
-        self.plotProfileX.setLabel('bottom', 'Horizontal', 'mm')
+        self.plotProfileX.hideAxis('bottom')
+        #self.plotProfileX.setLabel('bottom', 'Horizontal', 'mm')
         self.gridBeamSizeX.addWidget(self.plotProfileX)
+        self.plotProfileX.resize(self.frameProfileX.width()-self.layoutMargin, self.frameProfileX.height()-self.layoutMargin)
 
-        self.plotProfileY = pg.PlotWidget(title="Vertical axis intensity")
+        self.plotProfileY = pg.PlotWidget()
         self.plotProfileY.setBackground('w')
         self.plotProfileY.showGrid(x=True, y=True)
-        self.plotProfileY.setLabel('left', 'Intensity', '%')
-        self.plotProfileY.setLabel('bottom', 'Vertical', 'mm')
+        #self.plotProfileY.setLabel('left', 'Intensity', '%')
+        #self.plotProfileY.setLabel('bottom', 'Vertical', 'mm')
+        self.plotProfileY.setLabel('bottom', 'Intensity', '%')
+        self.plotProfileY.hideAxis('left')
         self.gridBeamSizeY.addWidget(self.plotProfileY)
+        self.plotProfileY.resize(self.frameProfileY.width()-self.layoutMargin, self.frameProfileY.height()-self.layoutMargin)
 
         self.lcdTimer.display("00:00.000")
+    
+        self.labelCamera.resize(self.frameCamera.width()-self.layoutMargin, self.frameCamera.height()-self.layoutMargin)
 
     def setup_camera(self):
         if self.dialog: return
@@ -214,15 +240,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.blueberry.do_transformation = True
                 self.blueberry.transform_points = setup.original_points
                 self.blueberry.destination_points = setup.destination_points
-                self.blueberry.mm_per_pixel = setup.mm_per_pixel
+                self.blueberry.pixel_per_mm = setup.pixel_per_mm
+                print(setup.pixel_per_mm)
                 self.blueberry.rotate_angle = float(setup.lineRotationAngle.text())
-
 
             self.blueberry.gain = setup.gain
             self.blueberry.exposure_time = setup.exposure_time
             self.blueberry.ROI = setup.ROI
             self.blueberry.filter_code = setup.filter_code
             self.blueberry.filter_para = setup.filter_para
+            self.blueberry.calibration_angle = setup.calibration_angle
 
             if self.blueberry.connected:
                 self.blueberry.working = True
@@ -266,24 +293,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.redraw_signal.emit(fname)
 
     def set_line(self):
-        if not self.labelViewer.left: return
-        self.intensity_line = [self.labelViewer.x, self.labelViewer.y]
-        if self.labelViewer.x_end is not None:
-            self.intensity_line[0] = self.labelViewer.x_end
-        if self.labelViewer.y_end is not None:
-            self.intensity_line[1] = self.labelViewer.y_end
+        if not self.labelCamera.left: return
+        self.intensity_line = [self.labelCamera.x, self.labelCamera.y]
+        if self.labelCamera.x_end is not None:
+            self.intensity_line[0] = self.labelCamera.x_end
+        if self.labelCamera.y_end is not None:
+            self.intensity_line[1] = self.labelCamera.y_end
         self.blueberry.intensity_line = self.intensity_line
 
     def resizeEvent(self, event):
         self.previous = self.main_size
         self.main_size = [self.width(), self.height()]
-        self.image_size = [self.wViewer.width(), self.wViewer.height()]
-        self.plot_profile_size = [self.wProfile.width(), self.wProfile.height()]
-        self.plot_beamx_size = [self.wBeamSizeX.width(), self.wBeamSizeX.height()]
-        self.plot_beamy_size = [self.wBeamSizeY.width(), self.wBeamSizeY.height()]
+        self.image_size = [self.frameCamera.width(), self.frameCamera.height()]
+        self.plot_livex_size = [self.frameLiveXProfile.width(), self.frameLiveXProfile.height()]
+        self.plot_livey_size = [self.frameLiveYProfile.width(), self.frameLiveYProfile.height()]
+        self.plot_profile_size = [self.frameProfile.width(), self.frameProfile.height()]
+        self.plot_beamx_size = [self.frameProfileX.width(), self.frameProfileX.height()]
+        self.plot_beamy_size = [self.frameProfileY.width(), self.frameProfileY.height()]
 
-        if self.labelViewer is not None:
-            self.labelViewer.resize(self.image_size[0], self.image_size[1])
+        if self.labelCamera is not None:
+            self.labelCamera.resize(self.image_size[0], self.image_size[1])
         if self.profile is not None:
             self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
         if self.beamx is not None:
@@ -353,18 +382,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 height, width = graphics.shape
                 qImg = QImage(graphics.data, width, height, width, QImage.Format_Grayscale8)
             pixmap = QPixmap.fromImage(qImg)
-            pixmap = pixmap.scaled(self.labelViewer.width(), self.labelViewer.height())
+            pixmap = pixmap.scaled(self.labelCamera.width(), self.labelCamera.height())
 
             painter = QPainter(pixmap)
             painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
             if self.intensity_line != [-1,-1]:
                 x, y = self.intensity_line[0], self.intensity_line[1]
             else:
-                x, y = round(self.labelViewer.width()/2), round(self.labelViewer.height()/2)
-            painter.drawLine(0, y, self.labelViewer.width(), y)
-            painter.drawLine(x, 0, x, self.labelViewer.height())
+                x, y = round(self.labelCamera.width()/2), round(self.labelCamera.height()/2)
+            painter.drawLine(0, y, self.labelCamera.width(), y)
+            painter.drawLine(x, 0, x, self.labelCamera.height())
             painter.end()
-            self.labelViewer.setPixmap(pixmap)
+            self.labelCamera.setPixmap(pixmap)
         elif any(target == i for i in [LIVE_XPROFILE_SCREEN, LIVE_YPROFILE_SCREEN]):
             if target == LIVE_XPROFILE_SCREEN:
                 curve = self.liveXCurve
@@ -373,9 +402,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             x1 = []
             y1 = []
             for value in graphics:
-                x1.append(value[0])
+                if target == LIVE_XPROFILE_SCREEN:
+                    x1.append(value[0])
+                else:
+                    x1.append(-value[0])
                 y1.append(value[1])
-            curve.setData(x1, y1)
+            if target == LIVE_XPROFILE_SCREEN:
+                curve.setData(x1, y1)
+            else:
+                curve.setData(y1, x1)
             #plot.setXRange(min(x1),max(x1))
             #plot.setYRange(min(y1), max(y1)+5)
 
@@ -403,8 +438,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             image = pg.ImageItem()
             image.setLookupTable(look_up_table)
             image.setImage(np.array(graphics))
-            scale_x = self.blueberry.mm_per_pixel[0]
-            scale_y = self.blueberry.mm_per_pixel[1]
+            scale_x = 1.0/self.blueberry.pixel_per_mm[0]
+            scale_y = 1.0/self.blueberry.pixel_per_mm[1]
             image.setTransform(QTransform().scale(scale_x, scale_y).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
 
             self.plotProfile.addItem(image)
@@ -428,34 +463,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     for value in additional_curves:
                         x2.append(value[0])
                         y2.append(value[1])
-            self.plotProfileX.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))        
+                    self.plotProfileX.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))
         elif target == YSIZE_SCREEN:
             self.plotProfileY.clear()
             x1, y1 = [], []
             for value in graphics:
                 x1.append(value[0])
                 y1.append(value[1])
-            self.plotProfileY.setXRange(min(x1),max(x1))
-            self.plotProfileY.setYRange(min(y1), max(y1)+5)
+            self.plotProfileY.setXRange(min(y1),max(y1))
+            self.plotProfileY.setYRange(min(x1), max(x1)+5)
 
-            self.plotProfileY.plot(x1, y1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
+            self.plotProfileY.plot(y1, x1, pen=gara_pen, symbol='o', symbolBrush=(64,130,237), symbolSize=5, symbolPen=gara_pen)
             if additional_curves is not None:
                 if len(additional_curves) > 0:
                     x2, y2 = [], []
                     for value in additional_curves:
                         x2.append(value[0])
                         y2.append(value[1])
-                    self.plotProfileY.plot(x2, y2, pen=pg.mkPen(color=(227, 28, 14), width=2))
+                    self.plotProfileY.plot(y2, x2, pen=pg.mkPen(color=(227, 28, 14), width=2))
         else:
             return
 
         if any(target == i for i in [XSIZE_SCREEN, YSIZE_SCREEN, PROFILE_SCREEN]):
-            self.image_size = [self.wViewer.width(), self.wViewer.height()]
+            self.image_size = [self.frameCamera.width(), self.frameCamera.height()]
 
     @Slot(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
     def save_pretty_plot(self, transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline):
         transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        mm_per_pixel = self.blueberry.mm_per_pixel
+        mm_per_pixel = [1.0/self.blueberry.pixel_per_mm[0], 1.0/self.blueberry.pixel_per_mm[1]]
         #transformed_image = cv2.resize(transformed_image, dsize=(400,400), interpolation=cv2.INTER_LINEAR)
         gridspec = GridSpec(nrows=2, ncols=2, width_ratios=[4,1], height_ratios=[1,4], wspace=0.025, hspace=0.025)
 

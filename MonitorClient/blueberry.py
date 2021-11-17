@@ -29,7 +29,7 @@ import pyqtgraph as pg
 
 from logger import LogStringHandler
 from variables import *
-
+import utilities as ut
 
 class Blueberry(QThread):
     watch_signal = Signal(bool)
@@ -61,7 +61,6 @@ class Blueberry(QThread):
         self.camera = None
         self.url = None
 
-        self.image = None
         self.original_image = None
 
         self.filter_code = None
@@ -70,7 +69,7 @@ class Blueberry(QThread):
         self.rotate_angle = 0.0
         self.do_transformation = False
         self.destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
-        self.mm_per_pixel = [1.0, 1.0]
+        self.pixel_per_mm = [1.0, 1.0]
 
         self.original_pixel = None
 
@@ -83,6 +82,8 @@ class Blueberry(QThread):
         self.exposure_time = None
         self.ROI = [[0,0], [0,0]]
         self.intensity_line = [-1,-1]
+
+        self.calibration_angle = 0
 
         self.repeat = None
         self.rotation = 0
@@ -101,40 +102,46 @@ class Blueberry(QThread):
 
     def connection(self, url):
         self.url = url
+        if not "OpenCV" in self.sdk:
+            import re
+            p = re.compile(r'[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+')
+            result = p.search(self.url)
+            if result is not None:
+                ip_address = result[0]
+            else:
+                ip_address = ''
         if "OpenCV" in self.sdk:
-            self.url = url
             try:
                 img_resp = cv2.VideoCapture(self.url)
                 if not img_resp.isOpened():
-                    self.msg = "Connected camera won't be opened"
+                    message = "ERROR Connected camera won't be opened"
                     self.connected = False
                 else:
-                    self.msg = 'Connection successful'
+                    message = 'INFO Connection successful'
                     self.connected = True
             except:
-                self.msg = 'Connection is failed'
+                message = 'ERROR Connection is failed'
                 self.connected = False
         elif "Vimba" in self.sdk:
             if not import_vimba:
-                self.msg = 'ERRORPlease install vimba module'
+                message = 'ERROR Please install vimba module'
                 self.connected = False
             else:
-                self.url = url
                 try:
                     with Vimba.get_instance() as vimba:
                         cams = vimba.get_all_cameras()
                         if len(cams) < 1:
-                            self.msg = f'There is no connected GigE camera.'
+                            message = f'ERROR There is no connected GigE camera.'
                             self.connected = False
                     self.camera = cams[0]
-                    self.msg = f'Connection successful'
+                    message = f'INFO Connection successful'
                     self.connected = True
                 except:
-                    self.msg = f'connection is failed.'
+                    message = f'ERROR connection is failed.'
                     self.connected = False
         elif "Pylon" in self.sdk:
             if not import_pylon:
-                self.msg = 'ERRORPlease install pylon module'
+                message = 'ERROR Please install pylon module'
                 self.connected = False
             else:
                 self.converter = pylon.ImageFormatConverter()
@@ -142,20 +149,37 @@ class Blueberry(QThread):
                 # Supported pixel format: Mono 8, Mono 12, Mono 12 Packed, YUV 4:2:2 Packed, YUV  4:2:2 (YUYV) Packed
                 self.converter.OutputPixelFormat = pylon.PixelType_Mono8
                 self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+
+                #self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
                 try:
-                    self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+                    factory = pylon.TlFactory.GetInstance()
+                    ptl = factory.CreateTl('BaslerGigE')
+                    empty_camera_info = pylon.DeviceInfo()
+                    empty_camera_info.SetPropertyValue('IpAddress', ip_address)
+                    #camera_info = factory.CreateTl('BaslerGigE').CreateDeviceInfo()
+                    #camera_info.SetPropertyValue('PersistentIP', 'True')
+                    #camera_info.SetPropertyValue('DHCP', 'False')
+                    #camera_info.SetPropertyValue('IpAddress', ip_address)
+                    #camera_info.SetPropertyValue('SubnetMask', '255.255.255.0')
+                    #camera_info.SetPropertyValue('DefaultGateway', '10.1.30.1')                
+                    self.camera = pylon.InstantCamera(factory.CreateDevice(empty_camera_info))
+                    #self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
                     if self.camera is None:
-                        self.msg = f'ERROR There is no connected GigE camera.'
+                        message = f'ERROR There is no connected GigE camera.'
                         self.connected = False
                     self.camera.Open()
-                    self.msg = f'INFO Using device, {self.camera.GetDeviceInfo().GetModelName()}'#' at {self.camera.GetIpAddress()}'
+                    #self.camera.AcquisitionMode.SetValue('Continuous')
+
+                    message = f'INFO Using device, {self.camera.GetDeviceInfo().GetModelName()} at {self.camera.GetDeviceInfo().GetIpAddress()}'
                     self.connected = True
                 except:
                     if self.camera is None:
-                        self.msg = f'ERROR There is no connected GigE camera.'
+                        message = f'ERROR There is no connected GigE camera.'
                     else:
-                        self.msg = f'ERROR {self.camera.GetDeviceInfo().GetModelName()} connection is failed.'
+                        message = f'ERROR {self.camera.GetDeviceInfo().GetModelName()} connection is failed.'
                     self.connected = False
+        
+        return message
 
     def run(self):
         if "OpenCV" in self.sdk:
@@ -274,44 +298,44 @@ class Blueberry(QThread):
                         pass
 
                 while self.working:
-                        if self.idx == CAMERA_CAPTURE:
-                            self.watch_signal.emit(True)
-                            self.camera.StopGrabbing()
-                            queue = []
-                            for i in range(1, self.repeat+1):
-                                if self.idx == CAMERA_STOP: break
-                                queue.append(self.take_a_picture())
-                                #self.msleep(self.exposure_time)
-                                self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
+                    if self.idx == CAMERA_CAPTURE:
+                        self.watch_signal.emit(True)
+                        self.camera.StopGrabbing()
+                        queue = []
+                        for i in range(1, self.repeat+1):
+                            if self.idx == CAMERA_STOP: break
+                            queue.append(self.take_a_picture())
+                            #self.msleep(self.exposure_time)
+                            self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
 
-                            self.thread_logger_signal.emit('INFO', f"Analyze pictures")
-                            for image in queue:
-                                outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
-                                cv2.imwrite(outname, image)
-                                self.save_signal.emit(outname)
-                                xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
-                                beam_range = xrange + yrange
+                        self.thread_logger_signal.emit('INFO', f"Analyze pictures")
+                        for image in queue:
+                            outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
+                            cv2.imwrite(outname, image)
+                            self.save_signal.emit(outname)
+                            xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
+                            beam_range = xrange + yrange
 
-                                self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
-                                self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
-                                self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
-                                self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
-                            self.thread_logger_signal.emit('INFO', f'Analysis is completed')
+                            self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
+                            self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
+                            self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
+                            self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
+                        self.thread_logger_signal.emit('INFO', f'Analysis is completed')
 
-                            self.idx = CAMERA_SHOW
-                            self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-                            self.watch_signal.emit(False)
-                        else:
-                            if self.camera.IsGrabbing():
-                                result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
-                                if result.GrabSucceeded():
-                                    image = self.converter.Convert(result)
-                                    image = image.GetArray()
-                                    result.Release()
-                                else:
-                                    image = None
-                            self.show_screen(image)
-                            self.msleep(int((1.0/self.frame)*1000))
+                        self.idx = CAMERA_SHOW
+                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                        self.watch_signal.emit(False)
+                    else:
+                        if self.camera.IsGrabbing():
+                            result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+                            if result.GrabSucceeded():
+                                image = self.converter.Convert(result)
+                                image = image.GetArray()
+                                result.Release()
+                            else:
+                                image = None
+                        self.show_screen(image)
+                        self.msleep(int((1.0/self.frame)*1000))
             except:
                 self.thread_logger_signal.emit('ERROR', f'Connection was broken.')
                 self.connected = False
@@ -424,7 +448,9 @@ class Blueberry(QThread):
                     except:
                         image = None
         elif "Pylon" in self.sdk:
-            self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            #self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            if self.camera.IsGrabbing(): self.camera.StopGrabbin()
+            self.camera.StartGrabbing()
             minimum = self.camera.ExposureTimeRaw.Min
             maximum = self.camera.ExposureTimeRaw.Max
             try:
@@ -443,7 +469,7 @@ class Blueberry(QThread):
             except:
                 pass
 
-            result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+            result = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
             if result.GrabSucceeded():
                 image = self.converter.Convert(result)
                 image = image.GetArray()
@@ -470,36 +496,47 @@ class Blueberry(QThread):
         return image
             
     def show_screen(self, image):
+        print("Show screen")
         if not self.connected: return
         if not self.working: return
 
         self.original_image = image.copy()
         self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
-
-        image = self.rotate_image(image)
-        image = self.filter_image(image)
-        image = self.transform_image(image)
-        image = self.slice_image(image)
-        self.image = image
-
+        print("filter")
+        image = ut.filter_image(image, self.filter_code, self.filter_para)
+        print("rotate1")
+        image = ut.rotate_image(image, angle=self.calibration_angle)
+        print('transform')
+        image = ut.transform_image(image, self.transform_points, self.destination_points)
+        print('slice')
+        image = ut.slice_image(image, self.ROI)
+        print('rotate2')
+        image = ut.rotate_image(image, angle=0, quadrant = self.rotation, flip_rl = self.flip_rl, flip_ud = self.flip_ud)
+        print('analyze_picture')
         xbin, ybin, xhist_percent, yhist_percent, xrange, yrange = self.analyze_picture(image=image)
 
+        print("Send Signal")
         self.screen_signal.emit(PICTURE_SCREEN, image)
         self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(xbin, xhist_percent)), xrange)
         self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(ybin, yhist_percent)), yrange)
+        print("End show screen")
     
     def analyze_picture(self, image, shot=False):
         image = image
         #self.original_pixel = [image.shape[1], image.shape[0]]
 
+        print("CVT color")
         if len(image.shape) == 3:
             grayimage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             grayimage = image
         nypixel, nxpixel = grayimage.shape
-
-        total_x = self.original_pixel[0] * self.mm_per_pixel[0]
-        total_y = self.original_pixel[1] * self.mm_per_pixel[1]
+        print(f'pixel: {nypixel}, {nxpixel}')
+        print(f"pixel per mm: {self.pixel_per_mm}")
+        mm_per_pixel = [1.0/self.pixel_per_mm[0], 1.0/self.pixel_per_mm[1]]
+        print(f'mm per pixel: {mm_per_pixel}')
+        total_x = self.original_pixel[0] * mm_per_pixel[0]
+        total_y = self.original_pixel[1] * mm_per_pixel[1]
         mm_per_pixel_x = total_x / nxpixel
         mm_per_pixel_y = total_y / nypixel
         self.xmin = -round(total_x / 2.0)
@@ -507,6 +544,7 @@ class Blueberry(QThread):
         xbin = [self.xmin + float(i) * mm_per_pixel_x for i in range(nxpixel)]
         ybin = [self.ymin + float(i) * mm_per_pixel_y for i in range(nypixel)]
 
+        print("??!")
         xhist, yhist = [], []
         if shot:
             xhist = [0 for i in range(nxpixel)]
@@ -530,9 +568,10 @@ class Blueberry(QThread):
 
         xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
 
-        xlength = len(np.where(xhist_percent > 32)[0]) * self.mm_per_pixel[0]
-        ylength = len(np.where(yhist_percent > 32)[0]) * self.mm_per_pixel[1]
+        xlength = len(np.where(xhist_percent > 32)[0]) * mm_per_pixel[0]
+        ylength = len(np.where(yhist_percent > 32)[0]) * mm_per_pixel[1]
 
+        print("Shot")
         if shot:
             gauss = lambda x, a, b, c: a*np.exp(-(x-b)**2/2*c**2)
             try:

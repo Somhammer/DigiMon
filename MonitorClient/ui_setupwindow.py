@@ -8,8 +8,6 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-import os
-
 from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
@@ -17,14 +15,9 @@ from PySide6.QtWidgets import *  # type: ignore
 
 class Ui_SetupWindow(object):
     def setupUi(self, SetupWindow):
-        base_path = os.path.abspath(os.path.dirname(__file__))
         if not SetupWindow.objectName():
             SetupWindow.setObjectName(u"SetupWindow")
-        SetupWindow.setWindowModality(Qt.ApplicationModal)
-        SetupWindow.resize(1086, 769)
-        icon = QIcon()
-        icon.addFile(os.path.join(base_path, 'icons', 'ncc.png'), QSize(), QIcon.Normal, QIcon.Off)
-        SetupWindow.setWindowIcon(icon)
+        SetupWindow.resize(979, 828)
         sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -32,46 +25,46 @@ class Ui_SetupWindow(object):
         SetupWindow.setSizePolicy(sizePolicy)
         self.gridLayout_13 = QGridLayout(SetupWindow)
         self.gridLayout_13.setObjectName(u"gridLayout_13")
-        self.comboSetup = QComboBox(SetupWindow)
-        self.comboSetup.setObjectName(u"comboSetup")
-        self.comboSetup.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout_13.addWidget(self.comboSetup, 0, 2, 1, 1)
-
-        self.pushCancel = QPushButton(SetupWindow)
-        self.pushCancel.setObjectName(u"pushCancel")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.pushCancel.sizePolicy().hasHeightForWidth())
-        self.pushCancel.setSizePolicy(sizePolicy1)
-        self.pushCancel.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout_13.addWidget(self.pushCancel, 2, 5, 1, 1)
-
-        self.horizontalSpacer_4 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        self.gridLayout_13.addItem(self.horizontalSpacer_4, 2, 2, 1, 1)
-
         self.checkSaveLast = QCheckBox(SetupWindow)
         self.checkSaveLast.setObjectName(u"checkSaveLast")
         self.checkSaveLast.setChecked(True)
 
         self.gridLayout_13.addWidget(self.checkSaveLast, 2, 3, 1, 1)
 
-        self.pushSave = QPushButton(SetupWindow)
-        self.pushSave.setObjectName(u"pushSave")
-        self.pushSave.setFocusPolicy(Qt.ClickFocus)
+        self.comboSetup = QComboBox(SetupWindow)
+        self.comboSetup.setObjectName(u"comboSetup")
+        self.comboSetup.setFocusPolicy(Qt.ClickFocus)
 
-        self.gridLayout_13.addWidget(self.pushSave, 0, 0, 1, 1)
+        self.gridLayout_13.addWidget(self.comboSetup, 0, 2, 1, 1)
+
+        self.horizontalSpacer_4 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout_13.addItem(self.horizontalSpacer_4, 2, 2, 1, 1)
 
         self.pushOk = QPushButton(SetupWindow)
         self.pushOk.setObjectName(u"pushOk")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
         sizePolicy1.setHeightForWidth(self.pushOk.sizePolicy().hasHeightForWidth())
         self.pushOk.setSizePolicy(sizePolicy1)
         self.pushOk.setFocusPolicy(Qt.ClickFocus)
 
         self.gridLayout_13.addWidget(self.pushOk, 2, 4, 1, 1)
+
+        self.pushCancel = QPushButton(SetupWindow)
+        self.pushCancel.setObjectName(u"pushCancel")
+        sizePolicy1.setHeightForWidth(self.pushCancel.sizePolicy().hasHeightForWidth())
+        self.pushCancel.setSizePolicy(sizePolicy1)
+        self.pushCancel.setFocusPolicy(Qt.ClickFocus)
+
+        self.gridLayout_13.addWidget(self.pushCancel, 2, 5, 1, 1)
+
+        self.pushSave = QPushButton(SetupWindow)
+        self.pushSave.setObjectName(u"pushSave")
+        self.pushSave.setFocusPolicy(Qt.ClickFocus)
+
+        self.gridLayout_13.addWidget(self.pushSave, 0, 0, 1, 1)
 
         self.pushLoad = QPushButton(SetupWindow)
         self.pushLoad.setObjectName(u"pushLoad")
@@ -88,12 +81,12 @@ class Ui_SetupWindow(object):
         self.tabWidget.setSizePolicy(sizePolicy2)
         self.tabConnection = QWidget()
         self.tabConnection.setObjectName(u"tabConnection")
-        self.gridLayout_8 = QGridLayout(self.tabConnection)
-        self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.groupCameraConnection = QGroupBox(self.tabConnection)
         self.groupCameraConnection.setObjectName(u"groupCameraConnection")
+        self.groupCameraConnection.setGeometry(QRect(9, 9, 521, 177))
         sizePolicy2.setHeightForWidth(self.groupCameraConnection.sizePolicy().hasHeightForWidth())
         self.groupCameraConnection.setSizePolicy(sizePolicy2)
+        self.groupCameraConnection.setMaximumSize(QSize(16777215, 16777215))
         font = QFont()
         font.setPointSize(14)
         font.setBold(True)
@@ -156,28 +149,14 @@ class Ui_SetupWindow(object):
 
         self.gridLayout_3.addLayout(self.horizontalLayout_3, 3, 0, 1, 2)
 
-
-        self.gridLayout_8.addWidget(self.groupCameraConnection, 0, 0, 1, 1)
-
         self.groupControllerConnection = QGroupBox(self.tabConnection)
         self.groupControllerConnection.setObjectName(u"groupControllerConnection")
+        self.groupControllerConnection.setGeometry(QRect(10, 190, 521, 178))
         sizePolicy2.setHeightForWidth(self.groupControllerConnection.sizePolicy().hasHeightForWidth())
         self.groupControllerConnection.setSizePolicy(sizePolicy2)
         self.groupControllerConnection.setFont(font)
         self.gridLayout_5 = QGridLayout(self.groupControllerConnection)
         self.gridLayout_5.setObjectName(u"gridLayout_5")
-        self.checkUseControlServer = QCheckBox(self.groupControllerConnection)
-        self.checkUseControlServer.setObjectName(u"checkUseControlServer")
-        self.checkUseControlServer.setFont(font1)
-
-        self.gridLayout_5.addWidget(self.checkUseControlServer, 0, 0, 1, 2)
-
-        self.labelControllerIP1 = QLabel(self.groupControllerConnection)
-        self.labelControllerIP1.setObjectName(u"labelControllerIP1")
-        self.labelControllerIP1.setFont(font1)
-
-        self.gridLayout_5.addWidget(self.labelControllerIP1, 1, 0, 1, 1)
-
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.lineControllerIP1 = QLineEdit(self.groupControllerConnection)
@@ -250,11 +229,17 @@ class Ui_SetupWindow(object):
         self.horizontalLayout.addWidget(self.lineControllerIP5)
 
 
-        self.gridLayout_5.addLayout(self.horizontalLayout, 1, 1, 1, 1)
+        self.gridLayout_5.addLayout(self.horizontalLayout, 2, 1, 1, 1)
+
+        self.labelControllerIP1 = QLabel(self.groupControllerConnection)
+        self.labelControllerIP1.setObjectName(u"labelControllerIP1")
+        self.labelControllerIP1.setFont(font1)
+
+        self.gridLayout_5.addWidget(self.labelControllerIP1, 2, 0, 1, 1)
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
-        self.gridLayout_5.addItem(self.verticalSpacer_2, 2, 0, 1, 1)
+        self.gridLayout_5.addItem(self.verticalSpacer_2, 3, 0, 1, 1)
 
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
@@ -275,83 +260,46 @@ class Ui_SetupWindow(object):
         self.horizontalLayout_2.addWidget(self.checkControllerConnected)
 
 
-        self.gridLayout_5.addLayout(self.horizontalLayout_2, 3, 0, 1, 2)
+        self.gridLayout_5.addLayout(self.horizontalLayout_2, 4, 0, 1, 2)
 
+        self.checkUseControlServer = QCheckBox(self.groupControllerConnection)
+        self.checkUseControlServer.setObjectName(u"checkUseControlServer")
+        self.checkUseControlServer.setFont(font1)
 
-        self.gridLayout_8.addWidget(self.groupControllerConnection, 1, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.checkUseControlServer, 0, 0, 1, 2)
 
-        self.horizontalSpacer_5 = QSpacerItem(751, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.labelPVName = QLabel(self.groupControllerConnection)
+        self.labelPVName.setObjectName(u"labelPVName")
+        self.labelPVName.setFont(font1)
 
-        self.gridLayout_8.addItem(self.horizontalSpacer_5, 1, 1, 1, 1)
+        self.gridLayout_5.addWidget(self.labelPVName, 1, 0, 1, 1)
+
+        self.linePVName = QLineEdit(self.groupControllerConnection)
+        self.linePVName.setObjectName(u"linePVName")
+        self.linePVName.setFont(font1)
+
+        self.gridLayout_5.addWidget(self.linePVName, 1, 1, 1, 1)
 
         self.textConnectionLog = QTextBrowser(self.tabConnection)
         self.textConnectionLog.setObjectName(u"textConnectionLog")
+        self.textConnectionLog.setGeometry(QRect(10, 380, 521, 331))
         sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         sizePolicy3.setHorizontalStretch(0)
         sizePolicy3.setVerticalStretch(0)
         sizePolicy3.setHeightForWidth(self.textConnectionLog.sizePolicy().hasHeightForWidth())
         self.textConnectionLog.setSizePolicy(sizePolicy3)
-
-        self.gridLayout_8.addWidget(self.textConnectionLog, 2, 0, 1, 1)
-
         self.tabWidget.addTab(self.tabConnection, "")
         self.tabPhoto = QWidget()
         self.tabPhoto.setObjectName(u"tabPhoto")
-        self.gridLayout_6 = QGridLayout(self.tabPhoto)
-        self.gridLayout_6.setObjectName(u"gridLayout_6")
-        self.groupFilter = QGroupBox(self.tabPhoto)
-        self.groupFilter.setObjectName(u"groupFilter")
-        self.groupFilter.setFont(font)
-        self.gridLayout_4 = QGridLayout(self.groupFilter)
-        self.gridLayout_4.setObjectName(u"gridLayout_4")
-        self.listParameters = QListWidget(self.groupFilter)
-        self.listParameters.setObjectName(u"listParameters")
-        sizePolicy2.setHeightForWidth(self.listParameters.sizePolicy().hasHeightForWidth())
-        self.listParameters.setSizePolicy(sizePolicy2)
-        self.listParameters.setFont(font1)
-
-        self.gridLayout_4.addWidget(self.listParameters, 1, 0, 1, 2)
-
-        self.pushFilterApply = QPushButton(self.groupFilter)
-        self.pushFilterApply.setObjectName(u"pushFilterApply")
-        sizePolicy1.setHeightForWidth(self.pushFilterApply.sizePolicy().hasHeightForWidth())
-        self.pushFilterApply.setSizePolicy(sizePolicy1)
-        self.pushFilterApply.setFont(font1)
-
-        self.gridLayout_4.addWidget(self.pushFilterApply, 2, 0, 1, 1)
-
-        self.horizontalSpacer_6 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        self.gridLayout_4.addItem(self.horizontalSpacer_6, 2, 1, 1, 1)
-
-        self.comboFilter = QComboBox(self.groupFilter)
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.addItem("")
-        self.comboFilter.setObjectName(u"comboFilter")
-        sizePolicy2.setHeightForWidth(self.comboFilter.sizePolicy().hasHeightForWidth())
-        self.comboFilter.setSizePolicy(sizePolicy2)
-        self.comboFilter.setFont(font1)
-
-        self.gridLayout_4.addWidget(self.comboFilter, 0, 0, 1, 2)
-
-
-        self.gridLayout_6.addWidget(self.groupFilter, 2, 1, 2, 1)
-
-        self.label = QLabel(self.tabPhoto)
-        self.label.setObjectName(u"label")
-
-        self.gridLayout_6.addWidget(self.label, 3, 0, 1, 1)
-
+        self.gridLayout_7 = QGridLayout(self.tabPhoto)
+        self.gridLayout_7.setObjectName(u"gridLayout_7")
         self.frameImage = QFrame(self.tabPhoto)
         self.frameImage.setObjectName(u"frameImage")
         sizePolicy2.setHeightForWidth(self.frameImage.sizePolicy().hasHeightForWidth())
         self.frameImage.setSizePolicy(sizePolicy2)
         self.frameImage.setMinimumSize(QSize(550, 550))
         self.frameImage.setMaximumSize(QSize(550, 550))
+        self.frameImage.setLayoutDirection(Qt.LeftToRight)
         self.frameImage.setFrameShape(QFrame.StyledPanel)
         self.frameImage.setFrameShadow(QFrame.Plain)
         self.gridLayout = QGridLayout(self.frameImage)
@@ -364,155 +312,9 @@ class Ui_SetupWindow(object):
         self.labelImage.setMaximumSize(QSize(9999, 9999))
         self.labelImage.setFocusPolicy(Qt.ClickFocus)
         self.labelImage.setFrameShape(QFrame.NoFrame)
+        self.labelImage.setAlignment(Qt.AlignCenter)
 
-        self.gridLayout.addWidget(self.labelImage, 0, 0, 1, 1)
-
-
-        self.gridLayout_6.addWidget(self.frameImage, 0, 0, 3, 1)
-
-        self.groupROI = QGroupBox(self.tabPhoto)
-        self.groupROI.setObjectName(u"groupROI")
-        self.groupROI.setFont(font)
-        self.gridLayout_2 = QGridLayout(self.groupROI)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.labelX0 = QLabel(self.groupROI)
-        self.labelX0.setObjectName(u"labelX0")
-        self.labelX0.setMaximumSize(QSize(50, 16777215))
-        self.labelX0.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelX0, 1, 0, 1, 1)
-
-        self.sliderX0 = QSlider(self.groupROI)
-        self.sliderX0.setObjectName(u"sliderX0")
-        sizePolicy1.setHeightForWidth(self.sliderX0.sizePolicy().hasHeightForWidth())
-        self.sliderX0.setSizePolicy(sizePolicy1)
-        self.sliderX0.setFocusPolicy(Qt.StrongFocus)
-        self.sliderX0.setMaximum(1000)
-        self.sliderX0.setOrientation(Qt.Horizontal)
-
-        self.gridLayout_2.addWidget(self.sliderX0, 1, 2, 1, 1)
-
-        self.labelY0 = QLabel(self.groupROI)
-        self.labelY0.setObjectName(u"labelY0")
-        self.labelY0.setMaximumSize(QSize(50, 16777215))
-        self.labelY0.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelY0, 2, 0, 1, 1)
-
-        self.sliderY0 = QSlider(self.groupROI)
-        self.sliderY0.setObjectName(u"sliderY0")
-        sizePolicy1.setHeightForWidth(self.sliderY0.sizePolicy().hasHeightForWidth())
-        self.sliderY0.setSizePolicy(sizePolicy1)
-        self.sliderY0.setMaximum(1000)
-        self.sliderY0.setOrientation(Qt.Horizontal)
-
-        self.gridLayout_2.addWidget(self.sliderY0, 2, 2, 1, 1)
-
-        self.labelWidth = QLabel(self.groupROI)
-        self.labelWidth.setObjectName(u"labelWidth")
-        self.labelWidth.setMaximumSize(QSize(1000, 16777215))
-        self.labelWidth.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelWidth, 4, 0, 1, 1)
-
-        self.labelSize = QLabel(self.groupROI)
-        self.labelSize.setObjectName(u"labelSize")
-        self.labelSize.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelSize, 3, 0, 1, 2)
-
-        self.labelSP = QLabel(self.groupROI)
-        self.labelSP.setObjectName(u"labelSP")
-        self.labelSP.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelSP, 0, 0, 1, 2)
-
-        self.labelHeight = QLabel(self.groupROI)
-        self.labelHeight.setObjectName(u"labelHeight")
-        self.labelHeight.setMaximumSize(QSize(100, 16777215))
-        self.labelHeight.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelHeight, 5, 0, 1, 1)
-
-        self.lineWidth = QLineEdit(self.groupROI)
-        self.lineWidth.setObjectName(u"lineWidth")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.lineWidth.sizePolicy().hasHeightForWidth())
-        self.lineWidth.setSizePolicy(sizePolicy4)
-        self.lineWidth.setMaximumSize(QSize(50, 16777215))
-        self.lineWidth.setFont(font1)
-        self.lineWidth.setFocusPolicy(Qt.NoFocus)
-        self.lineWidth.setReadOnly(True)
-
-        self.gridLayout_2.addWidget(self.lineWidth, 4, 1, 1, 1)
-
-        self.labelSizePixel = QLabel(self.groupROI)
-        self.labelSizePixel.setObjectName(u"labelSizePixel")
-        self.labelSizePixel.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelSizePixel, 3, 2, 1, 1)
-
-        self.lineX0 = QLineEdit(self.groupROI)
-        self.lineX0.setObjectName(u"lineX0")
-        sizePolicy4.setHeightForWidth(self.lineX0.sizePolicy().hasHeightForWidth())
-        self.lineX0.setSizePolicy(sizePolicy4)
-        self.lineX0.setMaximumSize(QSize(50, 16777215))
-        self.lineX0.setFont(font1)
-        self.lineX0.setFocusPolicy(Qt.NoFocus)
-        self.lineX0.setReadOnly(True)
-
-        self.gridLayout_2.addWidget(self.lineX0, 1, 1, 1, 1)
-
-        self.sliderWidth = QSlider(self.groupROI)
-        self.sliderWidth.setObjectName(u"sliderWidth")
-        sizePolicy1.setHeightForWidth(self.sliderWidth.sizePolicy().hasHeightForWidth())
-        self.sliderWidth.setSizePolicy(sizePolicy1)
-        self.sliderWidth.setMaximum(1000)
-        self.sliderWidth.setOrientation(Qt.Horizontal)
-
-        self.gridLayout_2.addWidget(self.sliderWidth, 4, 2, 1, 1)
-
-        self.lineY0 = QLineEdit(self.groupROI)
-        self.lineY0.setObjectName(u"lineY0")
-        sizePolicy4.setHeightForWidth(self.lineY0.sizePolicy().hasHeightForWidth())
-        self.lineY0.setSizePolicy(sizePolicy4)
-        self.lineY0.setMaximumSize(QSize(50, 16777215))
-        self.lineY0.setFont(font1)
-        self.lineY0.setFocusPolicy(Qt.NoFocus)
-        self.lineY0.setReadOnly(True)
-
-        self.gridLayout_2.addWidget(self.lineY0, 2, 1, 1, 1)
-
-        self.sliderHeight = QSlider(self.groupROI)
-        self.sliderHeight.setObjectName(u"sliderHeight")
-        sizePolicy1.setHeightForWidth(self.sliderHeight.sizePolicy().hasHeightForWidth())
-        self.sliderHeight.setSizePolicy(sizePolicy1)
-        self.sliderHeight.setMaximum(1000)
-        self.sliderHeight.setOrientation(Qt.Horizontal)
-
-        self.gridLayout_2.addWidget(self.sliderHeight, 5, 2, 1, 1)
-
-        self.lineHeight = QLineEdit(self.groupROI)
-        self.lineHeight.setObjectName(u"lineHeight")
-        sizePolicy4.setHeightForWidth(self.lineHeight.sizePolicy().hasHeightForWidth())
-        self.lineHeight.setSizePolicy(sizePolicy4)
-        self.lineHeight.setMaximumSize(QSize(50, 16777215))
-        self.lineHeight.setFont(font1)
-        self.lineHeight.setFocusPolicy(Qt.NoFocus)
-        self.lineHeight.setReadOnly(True)
-
-        self.gridLayout_2.addWidget(self.lineHeight, 5, 1, 1, 1)
-
-        self.labelSPPixel = QLabel(self.groupROI)
-        self.labelSPPixel.setObjectName(u"labelSPPixel")
-        self.labelSPPixel.setFont(font1)
-
-        self.gridLayout_2.addWidget(self.labelSPPixel, 0, 2, 1, 1)
-
-
-        self.gridLayout_6.addWidget(self.groupROI, 1, 1, 1, 1)
+        self.gridLayout_7.addWidget(self.frameImage, 0, 0, 3, 1, Qt.AlignHCenter|Qt.AlignVCenter)
 
         self.groupCamera = QGroupBox(self.tabPhoto)
         self.groupCamera.setObjectName(u"groupCamera")
@@ -556,6 +358,9 @@ class Ui_SetupWindow(object):
         self.lineGain = QLineEdit(self.groupCamera)
         self.lineGain.setObjectName(u"lineGain")
         self.lineGain.setEnabled(True)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
         sizePolicy4.setHeightForWidth(self.lineGain.sizePolicy().hasHeightForWidth())
         self.lineGain.setSizePolicy(sizePolicy4)
         self.lineGain.setMaximumSize(QSize(60, 16777215))
@@ -602,30 +407,347 @@ class Ui_SetupWindow(object):
         self.gridCamera.addWidget(self.pushApplyConf, 2, 4, 1, 1)
 
 
-        self.gridLayout_6.addWidget(self.groupCamera, 0, 1, 1, 1)
+        self.gridLayout_7.addWidget(self.groupCamera, 0, 1, 1, 1)
+
+        self.groupROI = QGroupBox(self.tabPhoto)
+        self.groupROI.setObjectName(u"groupROI")
+        self.groupROI.setFont(font)
+        self.gridLayout_2 = QGridLayout(self.groupROI)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.labelSPPixel = QLabel(self.groupROI)
+        self.labelSPPixel.setObjectName(u"labelSPPixel")
+        self.labelSPPixel.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelSPPixel, 0, 2, 1, 1)
+
+        self.lineHeight = QLineEdit(self.groupROI)
+        self.lineHeight.setObjectName(u"lineHeight")
+        sizePolicy4.setHeightForWidth(self.lineHeight.sizePolicy().hasHeightForWidth())
+        self.lineHeight.setSizePolicy(sizePolicy4)
+        self.lineHeight.setMaximumSize(QSize(50, 16777215))
+        self.lineHeight.setFont(font1)
+        self.lineHeight.setFocusPolicy(Qt.NoFocus)
+        self.lineHeight.setReadOnly(True)
+
+        self.gridLayout_2.addWidget(self.lineHeight, 5, 1, 1, 1)
+
+        self.labelHeight = QLabel(self.groupROI)
+        self.labelHeight.setObjectName(u"labelHeight")
+        self.labelHeight.setMaximumSize(QSize(100, 16777215))
+        self.labelHeight.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelHeight, 5, 0, 1, 1)
+
+        self.labelWidth = QLabel(self.groupROI)
+        self.labelWidth.setObjectName(u"labelWidth")
+        self.labelWidth.setMaximumSize(QSize(1000, 16777215))
+        self.labelWidth.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelWidth, 4, 0, 1, 1)
+
+        self.labelSP = QLabel(self.groupROI)
+        self.labelSP.setObjectName(u"labelSP")
+        self.labelSP.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelSP, 0, 0, 1, 2)
+
+        self.labelY0 = QLabel(self.groupROI)
+        self.labelY0.setObjectName(u"labelY0")
+        self.labelY0.setMaximumSize(QSize(50, 16777215))
+        self.labelY0.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelY0, 2, 0, 1, 1)
+
+        self.lineY0 = QLineEdit(self.groupROI)
+        self.lineY0.setObjectName(u"lineY0")
+        sizePolicy4.setHeightForWidth(self.lineY0.sizePolicy().hasHeightForWidth())
+        self.lineY0.setSizePolicy(sizePolicy4)
+        self.lineY0.setMaximumSize(QSize(50, 16777215))
+        self.lineY0.setFont(font1)
+        self.lineY0.setFocusPolicy(Qt.NoFocus)
+        self.lineY0.setReadOnly(True)
+
+        self.gridLayout_2.addWidget(self.lineY0, 2, 1, 1, 1)
+
+        self.sliderY0 = QSlider(self.groupROI)
+        self.sliderY0.setObjectName(u"sliderY0")
+        sizePolicy1.setHeightForWidth(self.sliderY0.sizePolicy().hasHeightForWidth())
+        self.sliderY0.setSizePolicy(sizePolicy1)
+        self.sliderY0.setMaximum(1000)
+        self.sliderY0.setOrientation(Qt.Horizontal)
+
+        self.gridLayout_2.addWidget(self.sliderY0, 2, 2, 1, 1)
+
+        self.sliderHeight = QSlider(self.groupROI)
+        self.sliderHeight.setObjectName(u"sliderHeight")
+        sizePolicy1.setHeightForWidth(self.sliderHeight.sizePolicy().hasHeightForWidth())
+        self.sliderHeight.setSizePolicy(sizePolicy1)
+        self.sliderHeight.setMaximum(1000)
+        self.sliderHeight.setOrientation(Qt.Horizontal)
+
+        self.gridLayout_2.addWidget(self.sliderHeight, 5, 2, 1, 1)
+
+        self.labelX0 = QLabel(self.groupROI)
+        self.labelX0.setObjectName(u"labelX0")
+        self.labelX0.setMaximumSize(QSize(50, 16777215))
+        self.labelX0.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelX0, 1, 0, 1, 1)
+
+        self.lineWidth = QLineEdit(self.groupROI)
+        self.lineWidth.setObjectName(u"lineWidth")
+        sizePolicy4.setHeightForWidth(self.lineWidth.sizePolicy().hasHeightForWidth())
+        self.lineWidth.setSizePolicy(sizePolicy4)
+        self.lineWidth.setMaximumSize(QSize(50, 16777215))
+        self.lineWidth.setFont(font1)
+        self.lineWidth.setFocusPolicy(Qt.NoFocus)
+        self.lineWidth.setReadOnly(True)
+
+        self.gridLayout_2.addWidget(self.lineWidth, 4, 1, 1, 1)
+
+        self.lineX0 = QLineEdit(self.groupROI)
+        self.lineX0.setObjectName(u"lineX0")
+        sizePolicy4.setHeightForWidth(self.lineX0.sizePolicy().hasHeightForWidth())
+        self.lineX0.setSizePolicy(sizePolicy4)
+        self.lineX0.setMaximumSize(QSize(50, 16777215))
+        self.lineX0.setFont(font1)
+        self.lineX0.setFocusPolicy(Qt.NoFocus)
+        self.lineX0.setReadOnly(True)
+
+        self.gridLayout_2.addWidget(self.lineX0, 1, 1, 1, 1)
+
+        self.labelSizePixel = QLabel(self.groupROI)
+        self.labelSizePixel.setObjectName(u"labelSizePixel")
+        self.labelSizePixel.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelSizePixel, 3, 2, 1, 1)
+
+        self.sliderWidth = QSlider(self.groupROI)
+        self.sliderWidth.setObjectName(u"sliderWidth")
+        sizePolicy1.setHeightForWidth(self.sliderWidth.sizePolicy().hasHeightForWidth())
+        self.sliderWidth.setSizePolicy(sizePolicy1)
+        self.sliderWidth.setMaximum(1000)
+        self.sliderWidth.setOrientation(Qt.Horizontal)
+
+        self.gridLayout_2.addWidget(self.sliderWidth, 4, 2, 1, 1)
+
+        self.labelSize = QLabel(self.groupROI)
+        self.labelSize.setObjectName(u"labelSize")
+        self.labelSize.setFont(font1)
+
+        self.gridLayout_2.addWidget(self.labelSize, 3, 0, 1, 2)
+
+        self.sliderX0 = QSlider(self.groupROI)
+        self.sliderX0.setObjectName(u"sliderX0")
+        sizePolicy1.setHeightForWidth(self.sliderX0.sizePolicy().hasHeightForWidth())
+        self.sliderX0.setSizePolicy(sizePolicy1)
+        self.sliderX0.setFocusPolicy(Qt.StrongFocus)
+        self.sliderX0.setMaximum(1000)
+        self.sliderX0.setOrientation(Qt.Horizontal)
+
+        self.gridLayout_2.addWidget(self.sliderX0, 1, 2, 1, 1)
+
+
+        self.gridLayout_7.addWidget(self.groupROI, 1, 1, 1, 1)
+
+        self.groupFilter = QGroupBox(self.tabPhoto)
+        self.groupFilter.setObjectName(u"groupFilter")
+        self.groupFilter.setFont(font)
+        self.gridLayout_4 = QGridLayout(self.groupFilter)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.listParameters = QListWidget(self.groupFilter)
+        self.listParameters.setObjectName(u"listParameters")
+        sizePolicy2.setHeightForWidth(self.listParameters.sizePolicy().hasHeightForWidth())
+        self.listParameters.setSizePolicy(sizePolicy2)
+        self.listParameters.setFont(font1)
+
+        self.gridLayout_4.addWidget(self.listParameters, 1, 0, 1, 2)
+
+        self.horizontalSpacer_6 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout_4.addItem(self.horizontalSpacer_6, 2, 0, 1, 1)
+
+        self.pushFilterApply = QPushButton(self.groupFilter)
+        self.pushFilterApply.setObjectName(u"pushFilterApply")
+        sizePolicy1.setHeightForWidth(self.pushFilterApply.sizePolicy().hasHeightForWidth())
+        self.pushFilterApply.setSizePolicy(sizePolicy1)
+        self.pushFilterApply.setFont(font1)
+
+        self.gridLayout_4.addWidget(self.pushFilterApply, 2, 1, 1, 1)
+
+        self.comboFilter = QComboBox(self.groupFilter)
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.addItem("")
+        self.comboFilter.setObjectName(u"comboFilter")
+        sizePolicy2.setHeightForWidth(self.comboFilter.sizePolicy().hasHeightForWidth())
+        self.comboFilter.setSizePolicy(sizePolicy2)
+        self.comboFilter.setFont(font1)
+
+        self.gridLayout_4.addWidget(self.comboFilter, 0, 0, 1, 2)
+
+
+        self.gridLayout_7.addWidget(self.groupFilter, 2, 1, 2, 1)
+
+        self.label = QLabel(self.tabPhoto)
+        self.label.setObjectName(u"label")
+        self.label.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
+
+        self.gridLayout_7.addWidget(self.label, 3, 0, 1, 1)
+
+        self.verticalSpacer_5 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.gridLayout_7.addItem(self.verticalSpacer_5, 4, 1, 1, 1)
 
         self.tabWidget.addTab(self.tabPhoto, "")
         self.tabCalibration = QWidget()
         self.tabCalibration.setObjectName(u"tabCalibration")
-        self.gridLayout_7 = QGridLayout(self.tabCalibration)
-        self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.gridLayout_6 = QGridLayout(self.tabCalibration)
+        self.gridLayout_6.setObjectName(u"gridLayout_6")
+        self.tabWidget_2 = QTabWidget(self.tabCalibration)
+        self.tabWidget_2.setObjectName(u"tabWidget_2")
+        self.tabRectangle = QWidget()
+        self.tabRectangle.setObjectName(u"tabRectangle")
+        self.gridLayout_14 = QGridLayout(self.tabRectangle)
+        self.gridLayout_14.setObjectName(u"gridLayout_14")
+        self.label_16 = QLabel(self.tabRectangle)
+        self.label_16.setObjectName(u"label_16")
+
+        self.gridLayout_14.addWidget(self.label_16, 0, 0, 1, 1)
+
+        self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.gridLayout_14.addItem(self.verticalSpacer_3, 1, 0, 1, 4)
+
+        self.linePixelPerMM_y = QLineEdit(self.tabRectangle)
+        self.linePixelPerMM_y.setObjectName(u"linePixelPerMM_y")
+        self.linePixelPerMM_y.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_14.addWidget(self.linePixelPerMM_y, 0, 3, 1, 1)
+
+        self.label_17 = QLabel(self.tabRectangle)
+        self.label_17.setObjectName(u"label_17")
+        self.label_17.setMaximumSize(QSize(20, 16777215))
+        self.label_17.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_14.addWidget(self.label_17, 0, 2, 1, 1)
+
+        self.linePixelPerMM_x = QLineEdit(self.tabRectangle)
+        self.linePixelPerMM_x.setObjectName(u"linePixelPerMM_x")
+        self.linePixelPerMM_x.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_14.addWidget(self.linePixelPerMM_x, 0, 1, 1, 1)
+
+        self.tabWidget_2.addTab(self.tabRectangle, "")
+        self.tabPoint = QWidget()
+        self.tabPoint.setObjectName(u"tabPoint")
+        self.gridLayout_8 = QGridLayout(self.tabPoint)
+        self.gridLayout_8.setObjectName(u"gridLayout_8")
+        self.label_14 = QLabel(self.tabPoint)
+        self.label_14.setObjectName(u"label_14")
+        self.label_14.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_14, 5, 0, 1, 1)
+
+        self.lineQuad4y = QLineEdit(self.tabPoint)
+        self.lineQuad4y.setObjectName(u"lineQuad4y")
+        self.lineQuad4y.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad4y, 5, 2, 1, 1)
+
+        self.lineQuad3y = QLineEdit(self.tabPoint)
+        self.lineQuad3y.setObjectName(u"lineQuad3y")
+        self.lineQuad3y.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad3y, 4, 2, 1, 1)
+
+        self.lineQuad2y = QLineEdit(self.tabPoint)
+        self.lineQuad2y.setObjectName(u"lineQuad2y")
+        self.lineQuad2y.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad2y, 3, 2, 1, 1)
+
+        self.label_9 = QLabel(self.tabPoint)
+        self.label_9.setObjectName(u"label_9")
+        self.label_9.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_9, 1, 1, 1, 1)
+
+        self.label_10 = QLabel(self.tabPoint)
+        self.label_10.setObjectName(u"label_10")
+        self.label_10.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_10, 1, 2, 1, 1)
+
+        self.lineQuad2x = QLineEdit(self.tabPoint)
+        self.lineQuad2x.setObjectName(u"lineQuad2x")
+        self.lineQuad2x.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad2x, 3, 1, 1, 1)
+
+        self.lineQuad4x = QLineEdit(self.tabPoint)
+        self.lineQuad4x.setObjectName(u"lineQuad4x")
+        self.lineQuad4x.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad4x, 5, 1, 1, 1)
+
+        self.label_7 = QLabel(self.tabPoint)
+        self.label_7.setObjectName(u"label_7")
+
+        self.gridLayout_8.addWidget(self.label_7, 0, 0, 1, 4)
+
+        self.label_11 = QLabel(self.tabPoint)
+        self.label_11.setObjectName(u"label_11")
+        self.label_11.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_11, 2, 0, 1, 1)
+
+        self.label_13 = QLabel(self.tabPoint)
+        self.label_13.setObjectName(u"label_13")
+        self.label_13.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_13, 4, 0, 1, 1)
+
+        self.lineQuad1y = QLineEdit(self.tabPoint)
+        self.lineQuad1y.setObjectName(u"lineQuad1y")
+        self.lineQuad1y.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad1y, 2, 2, 1, 1)
+
+        self.lineQuad1x = QLineEdit(self.tabPoint)
+        self.lineQuad1x.setObjectName(u"lineQuad1x")
+        self.lineQuad1x.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad1x, 2, 1, 1, 1)
+
+        self.label_8 = QLabel(self.tabPoint)
+        self.label_8.setObjectName(u"label_8")
+        self.label_8.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_8, 1, 0, 1, 1)
+
+        self.label_12 = QLabel(self.tabPoint)
+        self.label_12.setObjectName(u"label_12")
+        self.label_12.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_8.addWidget(self.label_12, 3, 0, 1, 1)
+
+        self.lineQuad3x = QLineEdit(self.tabPoint)
+        self.lineQuad3x.setObjectName(u"lineQuad3x")
+        self.lineQuad3x.setMaximumSize(QSize(80, 16777215))
+
+        self.gridLayout_8.addWidget(self.lineQuad3x, 4, 1, 1, 1)
+
         self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-        self.gridLayout_7.addItem(self.horizontalSpacer_2, 1, 0, 1, 1)
+        self.gridLayout_8.addItem(self.horizontalSpacer_2, 2, 3, 1, 1)
 
-        self.horizontalSpacer_7 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.tabWidget_2.addTab(self.tabPoint, "")
 
-        self.gridLayout_7.addItem(self.horizontalSpacer_7, 0, 2, 1, 1)
-
-        self.pushOpenImage = QPushButton(self.tabCalibration)
-        self.pushOpenImage.setObjectName(u"pushOpenImage")
-        self.pushOpenImage.setFocusPolicy(Qt.ClickFocus)
-
-        self.gridLayout_7.addWidget(self.pushOpenImage, 0, 1, 1, 1)
-
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        self.gridLayout_7.addItem(self.horizontalSpacer, 1, 6, 1, 1)
+        self.gridLayout_6.addWidget(self.tabWidget_2, 3, 4, 1, 2)
 
         self.gridLayout_11 = QGridLayout()
         self.gridLayout_11.setObjectName(u"gridLayout_11")
@@ -634,7 +756,7 @@ class Ui_SetupWindow(object):
         sizePolicy1.setHeightForWidth(self.lineRotationAngle.sizePolicy().hasHeightForWidth())
         self.lineRotationAngle.setSizePolicy(sizePolicy1)
         self.lineRotationAngle.setMaximumSize(QSize(55, 55))
-        self.lineRotationAngle.setMaxLength(5)
+        self.lineRotationAngle.setMaxLength(6)
 
         self.gridLayout_11.addWidget(self.lineRotationAngle, 0, 1, 1, 1)
 
@@ -644,24 +766,38 @@ class Ui_SetupWindow(object):
 
         self.gridLayout_11.addWidget(self.labelRotationAngle, 0, 0, 1, 1)
 
+        self.pushAngleUp = QPushButton(self.tabCalibration)
+        self.pushAngleUp.setObjectName(u"pushAngleUp")
+        self.pushAngleUp.setMaximumSize(QSize(30, 16777215))
+        icon = QIcon()
+        icon.addFile(u"../MonitorClient/icons/up.png", QSize(), QIcon.Normal, QIcon.Off)
+        self.pushAngleUp.setIcon(icon)
+
+        self.gridLayout_11.addWidget(self.pushAngleUp, 0, 2, 1, 1)
+
+        self.labelPosition = QLabel(self.tabCalibration)
+        self.labelPosition.setObjectName(u"labelPosition")
+
+        self.gridLayout_11.addWidget(self.labelPosition, 2, 2, 2, 3)
+
         self.gridLayout_15 = QGridLayout()
         self.gridLayout_15.setSpacing(0)
         self.gridLayout_15.setObjectName(u"gridLayout_15")
         self.label_5 = QLabel(self.tabCalibration)
         self.label_5.setObjectName(u"label_5")
-        self.label_5.setAlignment(Qt.AlignCenter)
+        self.label_5.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
 
         self.gridLayout_15.addWidget(self.label_5, 1, 3, 1, 1)
 
         self.label_2 = QLabel(self.tabCalibration)
         self.label_2.setObjectName(u"label_2")
-        self.label_2.setAlignment(Qt.AlignCenter)
+        self.label_2.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
 
         self.gridLayout_15.addWidget(self.label_2, 1, 0, 1, 1)
 
         self.label_3 = QLabel(self.tabCalibration)
         self.label_3.setObjectName(u"label_3")
-        self.label_3.setAlignment(Qt.AlignCenter)
+        self.label_3.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
 
         self.gridLayout_15.addWidget(self.label_3, 1, 1, 1, 1)
 
@@ -673,7 +809,7 @@ class Ui_SetupWindow(object):
 
         self.label_6 = QLabel(self.tabCalibration)
         self.label_6.setObjectName(u"label_6")
-        self.label_6.setAlignment(Qt.AlignCenter)
+        self.label_6.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
 
         self.gridLayout_15.addWidget(self.label_6, 1, 4, 1, 1)
 
@@ -690,126 +826,64 @@ class Ui_SetupWindow(object):
 
         self.gridLayout_11.addLayout(self.gridLayout_15, 0, 4, 1, 1)
 
-        self.pushAngleUp = QPushButton(self.tabCalibration)
-        self.pushAngleUp.setObjectName(u"pushAngleUp")
-        self.pushAngleUp.setMaximumSize(QSize(30, 16777215))
-        icon = QIcon()
-        icon.addFile(os.path.join(base_path, 'icons', 'up.png'), QSize(), QIcon.Normal, QIcon.Off)
-        self.pushAngleUp.setIcon(icon)
+        self.labelExplanation2 = QLabel(self.tabCalibration)
+        self.labelExplanation2.setObjectName(u"labelExplanation2")
 
-        self.gridLayout_11.addWidget(self.pushAngleUp, 0, 2, 1, 1)
+        self.gridLayout_11.addWidget(self.labelExplanation2, 1, 0, 1, 5)
 
         self.pushAngleDown = QPushButton(self.tabCalibration)
         self.pushAngleDown.setObjectName(u"pushAngleDown")
         self.pushAngleDown.setMaximumSize(QSize(30, 16777215))
         icon1 = QIcon()
-        icon1.addFile(os.path.join(base_path, 'icons', 'down.png'), QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(u"../MonitorClient/icons/down.png", QSize(), QIcon.Normal, QIcon.Off)
         self.pushAngleDown.setIcon(icon1)
 
         self.gridLayout_11.addWidget(self.pushAngleDown, 0, 3, 1, 1)
-
-        self.labelExplanation2 = QLabel(self.tabCalibration)
-        self.labelExplanation2.setObjectName(u"labelExplanation2")
-
-        self.gridLayout_11.addWidget(self.labelExplanation2, 1, 0, 1, 5)
 
         self.labelExplanation = QLabel(self.tabCalibration)
         self.labelExplanation.setObjectName(u"labelExplanation")
 
         self.gridLayout_11.addWidget(self.labelExplanation, 2, 0, 2, 2)
 
-        self.labelPosition = QLabel(self.tabCalibration)
-        self.labelPosition.setObjectName(u"labelPosition")
+        self.verticalSpacer_4 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
-        self.gridLayout_11.addWidget(self.labelPosition, 2, 2, 2, 3)
-
-
-        self.gridLayout_7.addLayout(self.gridLayout_11, 2, 1, 1, 2)
-
-        self.gridLayout_12 = QGridLayout()
-        self.gridLayout_12.setObjectName(u"gridLayout_12")
-        self.label_23 = QLabel(self.tabCalibration)
-        self.label_23.setObjectName(u"label_23")
-
-        self.gridLayout_12.addWidget(self.label_23, 3, 4, 1, 1)
-
-        self.lineTransWidth = QLineEdit(self.tabCalibration)
-        self.lineTransWidth.setObjectName(u"lineTransWidth")
-        sizePolicy1.setHeightForWidth(self.lineTransWidth.sizePolicy().hasHeightForWidth())
-        self.lineTransWidth.setSizePolicy(sizePolicy1)
-        self.lineTransWidth.setMaximumSize(QSize(80, 16777215))
-        self.lineTransWidth.setFocusPolicy(Qt.StrongFocus)
-        self.lineTransWidth.setClearButtonEnabled(False)
-
-        self.gridLayout_12.addWidget(self.lineTransWidth, 0, 2, 1, 1)
-
-        self.label_19 = QLabel(self.tabCalibration)
-        self.label_19.setObjectName(u"label_19")
-        self.label_19.setMaximumSize(QSize(10, 16777215))
-        self.label_19.setAlignment(Qt.AlignCenter)
-
-        self.gridLayout_12.addWidget(self.label_19, 0, 3, 1, 1)
-
-        self.label_22 = QLabel(self.tabCalibration)
-        self.label_22.setObjectName(u"label_22")
-        sizePolicy2.setHeightForWidth(self.label_22.sizePolicy().hasHeightForWidth())
-        self.label_22.setSizePolicy(sizePolicy2)
-        self.label_22.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
-
-        self.gridLayout_12.addWidget(self.label_22, 1, 0, 2, 5)
-
-        self.label_24 = QLabel(self.tabCalibration)
-        self.label_24.setObjectName(u"label_24")
-
-        self.gridLayout_12.addWidget(self.label_24, 4, 4, 1, 1)
-
-        self.linePixelHeight = QLineEdit(self.tabCalibration)
-        self.linePixelHeight.setObjectName(u"linePixelHeight")
-        sizePolicy1.setHeightForWidth(self.linePixelHeight.sizePolicy().hasHeightForWidth())
-        self.linePixelHeight.setSizePolicy(sizePolicy1)
-        self.linePixelHeight.setMaximumSize(QSize(80, 16777215))
-        self.linePixelHeight.setFocusPolicy(Qt.StrongFocus)
-
-        self.gridLayout_12.addWidget(self.linePixelHeight, 4, 2, 1, 1)
-
-        self.label_21 = QLabel(self.tabCalibration)
-        self.label_21.setObjectName(u"label_21")
-        self.label_21.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
-
-        self.gridLayout_12.addWidget(self.label_21, 0, 0, 1, 2)
-
-        self.lineTransHeight = QLineEdit(self.tabCalibration)
-        self.lineTransHeight.setObjectName(u"lineTransHeight")
-        sizePolicy1.setHeightForWidth(self.lineTransHeight.sizePolicy().hasHeightForWidth())
-        self.lineTransHeight.setSizePolicy(sizePolicy1)
-        self.lineTransHeight.setMaximumSize(QSize(80, 16777215))
-        self.lineTransHeight.setFocusPolicy(Qt.StrongFocus)
-
-        self.gridLayout_12.addWidget(self.lineTransHeight, 0, 4, 1, 1)
-
-        self.linePixelWidth = QLineEdit(self.tabCalibration)
-        self.linePixelWidth.setObjectName(u"linePixelWidth")
-        sizePolicy1.setHeightForWidth(self.linePixelWidth.sizePolicy().hasHeightForWidth())
-        self.linePixelWidth.setSizePolicy(sizePolicy1)
-        self.linePixelWidth.setMaximumSize(QSize(80, 16777215))
-        self.linePixelWidth.setFocusPolicy(Qt.StrongFocus)
-
-        self.gridLayout_12.addWidget(self.linePixelWidth, 3, 2, 1, 1)
-
-        self.label_20 = QLabel(self.tabCalibration)
-        self.label_20.setObjectName(u"label_20")
-        self.label_20.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
-
-        self.gridLayout_12.addWidget(self.label_20, 4, 1, 1, 1)
-
-        self.label_18 = QLabel(self.tabCalibration)
-        self.label_18.setObjectName(u"label_18")
-        self.label_18.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
-
-        self.gridLayout_12.addWidget(self.label_18, 3, 1, 1, 1)
+        self.gridLayout_11.addItem(self.verticalSpacer_4, 4, 0, 1, 5)
 
 
-        self.gridLayout_7.addLayout(self.gridLayout_12, 2, 4, 1, 2)
+        self.gridLayout_6.addLayout(self.gridLayout_11, 2, 0, 2, 4)
+
+        self.labelPerspective = QLabel(self.tabCalibration)
+        self.labelPerspective.setObjectName(u"labelPerspective")
+
+        self.gridLayout_6.addWidget(self.labelPerspective, 2, 4, 1, 2)
+
+        self.frameTrans = QFrame(self.tabCalibration)
+        self.frameTrans.setObjectName(u"frameTrans")
+        self.frameTrans.setMinimumSize(QSize(450, 450))
+        self.frameTrans.setMaximumSize(QSize(450, 450))
+        self.frameTrans.setFrameShape(QFrame.StyledPanel)
+        self.frameTrans.setFrameShadow(QFrame.Plain)
+        self.gridLayout_10 = QGridLayout(self.frameTrans)
+        self.gridLayout_10.setObjectName(u"gridLayout_10")
+        self.gridLayout_10.setContentsMargins(0, 0, 0, 0)
+        self.labelTrans = QLabel(self.frameTrans)
+        self.labelTrans.setObjectName(u"labelTrans")
+        self.labelTrans.setMinimumSize(QSize(450, 450))
+        self.labelTrans.setMaximumSize(QSize(450, 450))
+        self.labelTrans.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout_6.addWidget(self.frameTrans, 1, 4, 1, 2, Qt.AlignHCenter|Qt.AlignVCenter)
+
+        self.pushOpenImage = QPushButton(self.tabCalibration)
+        self.pushOpenImage.setObjectName(u"pushOpenImage")
+        self.pushOpenImage.setFocusPolicy(Qt.ClickFocus)
+
+        self.gridLayout_6.addWidget(self.pushOpenImage, 0, 0, 1, 1)
+
+        self.pushCalCapture = QPushButton(self.tabCalibration)
+        self.pushCalCapture.setObjectName(u"pushCalCapture")
+
+        self.gridLayout_6.addWidget(self.pushCalCapture, 0, 1, 1, 1)
 
         self.frameOrigin = QFrame(self.tabCalibration)
         self.frameOrigin.setObjectName(u"frameOrigin")
@@ -826,80 +900,72 @@ class Ui_SetupWindow(object):
         self.labelOrigin.setMaximumSize(QSize(450, 450))
         self.labelOrigin.setFocusPolicy(Qt.ClickFocus)
         self.labelOrigin.setFrameShape(QFrame.NoFrame)
+        self.labelOrigin.setAlignment(Qt.AlignCenter)
 
-        self.gridLayout_9.addWidget(self.labelOrigin, 0, 0, 1, 1)
-
-
-        self.gridLayout_7.addWidget(self.frameOrigin, 1, 1, 1, 2)
-
-        self.horizontalSpacer_8 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        self.gridLayout_7.addItem(self.horizontalSpacer_8, 0, 5, 1, 1)
-
-        self.frameTrans = QFrame(self.tabCalibration)
-        self.frameTrans.setObjectName(u"frameTrans")
-        self.frameTrans.setMinimumSize(QSize(450, 450))
-        self.frameTrans.setMaximumSize(QSize(450, 450))
-        self.frameTrans.setFrameShape(QFrame.StyledPanel)
-        self.frameTrans.setFrameShadow(QFrame.Plain)
-        self.gridLayout_10 = QGridLayout(self.frameTrans)
-        self.gridLayout_10.setObjectName(u"gridLayout_10")
-        self.gridLayout_10.setContentsMargins(0, 0, 0, 0)
-        self.labelTrans = QLabel(self.frameTrans)
-        self.labelTrans.setObjectName(u"labelTrans")
-        self.labelTrans.setMinimumSize(QSize(450, 450))
-        self.labelTrans.setMaximumSize(QSize(450, 450))
-
-        self.gridLayout_10.addWidget(self.labelTrans, 1, 0, 1, 1)
-
-
-        self.gridLayout_7.addWidget(self.frameTrans, 1, 4, 1, 2)
+        self.gridLayout_6.addWidget(self.frameOrigin, 1, 0, 1, 4, Qt.AlignHCenter|Qt.AlignVCenter)
 
         self.pushConvert = QPushButton(self.tabCalibration)
         self.pushConvert.setObjectName(u"pushConvert")
         self.pushConvert.setFocusPolicy(Qt.ClickFocus)
 
-        self.gridLayout_7.addWidget(self.pushConvert, 0, 4, 1, 1)
+        self.gridLayout_6.addWidget(self.pushConvert, 0, 2, 1, 1)
 
-        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_7 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-        self.gridLayout_7.addItem(self.horizontalSpacer_3, 1, 3, 1, 1)
+        self.gridLayout_6.addItem(self.horizontalSpacer_7, 0, 3, 1, 1)
 
         self.tabWidget.addTab(self.tabCalibration, "")
 
         self.gridLayout_13.addWidget(self.tabWidget, 1, 0, 1, 6)
 
-        QWidget.setTabOrder(self.pushFilterApply, self.tabWidget)
-        QWidget.setTabOrder(self.tabWidget, self.checkCameraConnected)
+        QWidget.setTabOrder(self.tabWidget, self.comboSDKType)
+        QWidget.setTabOrder(self.comboSDKType, self.lineCameraAddr)
+        QWidget.setTabOrder(self.lineCameraAddr, self.pushConnectCamera)
+        QWidget.setTabOrder(self.pushConnectCamera, self.checkCameraConnected)
         QWidget.setTabOrder(self.checkCameraConnected, self.checkUseControlServer)
-        QWidget.setTabOrder(self.checkUseControlServer, self.lineControllerIP1)
+        QWidget.setTabOrder(self.checkUseControlServer, self.linePVName)
+        QWidget.setTabOrder(self.linePVName, self.lineControllerIP1)
         QWidget.setTabOrder(self.lineControllerIP1, self.lineControllerIP2)
         QWidget.setTabOrder(self.lineControllerIP2, self.lineControllerIP3)
         QWidget.setTabOrder(self.lineControllerIP3, self.lineControllerIP4)
         QWidget.setTabOrder(self.lineControllerIP4, self.lineControllerIP5)
-        QWidget.setTabOrder(self.lineControllerIP5, self.checkControllerConnected)
-        QWidget.setTabOrder(self.checkControllerConnected, self.textConnectionLog)
-        QWidget.setTabOrder(self.textConnectionLog, self.sliderGain)
-        QWidget.setTabOrder(self.sliderGain, self.sliderExposureTime)
-        QWidget.setTabOrder(self.sliderExposureTime, self.sliderX0)
+        QWidget.setTabOrder(self.lineControllerIP5, self.pushConnectController)
+        QWidget.setTabOrder(self.pushConnectController, self.checkControllerConnected)
+        QWidget.setTabOrder(self.checkControllerConnected, self.lineGain)
+        QWidget.setTabOrder(self.lineGain, self.sliderGain)
+        QWidget.setTabOrder(self.sliderGain, self.lineExposureTime)
+        QWidget.setTabOrder(self.lineExposureTime, self.sliderExposureTime)
+        QWidget.setTabOrder(self.sliderExposureTime, self.pushApplyConf)
+        QWidget.setTabOrder(self.pushApplyConf, self.sliderX0)
         QWidget.setTabOrder(self.sliderX0, self.sliderY0)
         QWidget.setTabOrder(self.sliderY0, self.sliderWidth)
         QWidget.setTabOrder(self.sliderWidth, self.sliderHeight)
         QWidget.setTabOrder(self.sliderHeight, self.comboFilter)
         QWidget.setTabOrder(self.comboFilter, self.listParameters)
-        QWidget.setTabOrder(self.listParameters, self.checkSaveLast)
-        QWidget.setTabOrder(self.checkSaveLast, self.comboSDKType)
-        QWidget.setTabOrder(self.comboSDKType, self.lineCameraAddr)
-        QWidget.setTabOrder(self.lineCameraAddr, self.pushConnectCamera)
-        QWidget.setTabOrder(self.pushConnectCamera, self.pushConnectController)
-        QWidget.setTabOrder(self.pushConnectController, self.lineTransWidth)
-        QWidget.setTabOrder(self.lineTransWidth, self.lineTransHeight)
-        QWidget.setTabOrder(self.lineTransHeight, self.linePixelWidth)
-        QWidget.setTabOrder(self.linePixelWidth, self.linePixelHeight)
+        QWidget.setTabOrder(self.listParameters, self.pushFilterApply)
+        QWidget.setTabOrder(self.pushFilterApply, self.pushCalCapture)
+        QWidget.setTabOrder(self.pushCalCapture, self.lineRotationAngle)
+        QWidget.setTabOrder(self.lineRotationAngle, self.pushAngleUp)
+        QWidget.setTabOrder(self.pushAngleUp, self.pushAngleDown)
+        QWidget.setTabOrder(self.pushAngleDown, self.sliderAngle)
+        QWidget.setTabOrder(self.sliderAngle, self.tabWidget_2)
+        QWidget.setTabOrder(self.tabWidget_2, self.linePixelPerMM_x)
+        QWidget.setTabOrder(self.linePixelPerMM_x, self.linePixelPerMM_y)
+        QWidget.setTabOrder(self.linePixelPerMM_y, self.lineQuad1x)
+        QWidget.setTabOrder(self.lineQuad1x, self.lineQuad1y)
+        QWidget.setTabOrder(self.lineQuad1y, self.lineQuad2x)
+        QWidget.setTabOrder(self.lineQuad2x, self.lineQuad2y)
+        QWidget.setTabOrder(self.lineQuad2y, self.lineQuad3x)
+        QWidget.setTabOrder(self.lineQuad3x, self.lineQuad3y)
+        QWidget.setTabOrder(self.lineQuad3y, self.lineQuad4x)
+        QWidget.setTabOrder(self.lineQuad4x, self.lineQuad4y)
+        QWidget.setTabOrder(self.lineQuad4y, self.checkSaveLast)
+        QWidget.setTabOrder(self.checkSaveLast, self.textConnectionLog)
 
         self.retranslateUi(SetupWindow)
 
         self.tabWidget.setCurrentIndex(1)
+        self.tabWidget_2.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(SetupWindow)
@@ -907,10 +973,10 @@ class Ui_SetupWindow(object):
 
     def retranslateUi(self, SetupWindow):
         SetupWindow.setWindowTitle(QCoreApplication.translate("SetupWindow", u"Setup", None))
-        self.pushCancel.setText(QCoreApplication.translate("SetupWindow", u"Cancel", None))
         self.checkSaveLast.setText(QCoreApplication.translate("SetupWindow", u"This settings will be used later.", None))
-        self.pushSave.setText(QCoreApplication.translate("SetupWindow", u"Save", None))
         self.pushOk.setText(QCoreApplication.translate("SetupWindow", u"Ok", None))
+        self.pushCancel.setText(QCoreApplication.translate("SetupWindow", u"Cancel", None))
+        self.pushSave.setText(QCoreApplication.translate("SetupWindow", u"Save", None))
         self.pushLoad.setText(QCoreApplication.translate("SetupWindow", u"Load", None))
         self.groupCameraConnection.setTitle(QCoreApplication.translate("SetupWindow", u"Camera", None))
         self.labelSDKType.setText(QCoreApplication.translate("SetupWindow", u"SDK Type", None))
@@ -922,15 +988,38 @@ class Ui_SetupWindow(object):
         self.pushConnectCamera.setText(QCoreApplication.translate("SetupWindow", u"Connect", None))
         self.checkCameraConnected.setText(QCoreApplication.translate("SetupWindow", u"Connected", None))
         self.groupControllerConnection.setTitle(QCoreApplication.translate("SetupWindow", u"Controller", None))
-        self.checkUseControlServer.setText(QCoreApplication.translate("SetupWindow", u"Use Network Camera Control Server", None))
-        self.labelControllerIP1.setText(QCoreApplication.translate("SetupWindow", u"IP Address", None))
         self.labelControllerIP2.setText(QCoreApplication.translate("SetupWindow", u".", None))
         self.labelControllerIP3.setText(QCoreApplication.translate("SetupWindow", u".", None))
         self.labelControllerIP4.setText(QCoreApplication.translate("SetupWindow", u".", None))
         self.labelControllerIP5.setText(QCoreApplication.translate("SetupWindow", u":", None))
+        self.labelControllerIP1.setText(QCoreApplication.translate("SetupWindow", u"IP Address", None))
         self.pushConnectController.setText(QCoreApplication.translate("SetupWindow", u"Connect", None))
         self.checkControllerConnected.setText(QCoreApplication.translate("SetupWindow", u"Connected", None))
+        self.checkUseControlServer.setText(QCoreApplication.translate("SetupWindow", u"Use Screen Controller", None))
+        self.labelPVName.setText(QCoreApplication.translate("SetupWindow", u"PV Name", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabConnection), QCoreApplication.translate("SetupWindow", u"Connection", None))
+        self.labelImage.setText("")
+        self.groupCamera.setTitle(QCoreApplication.translate("SetupWindow", u"Camera", None))
+        self.labelGainRange.setText(QCoreApplication.translate("SetupWindow", u"(0 - 100)", None))
+        self.labelExposureTimeRange.setText(QCoreApplication.translate("SetupWindow", u"(25 - 1000000)", None))
+        self.labelExposureTime.setText(QCoreApplication.translate("SetupWindow", u"Exposure Time (\u03bcs)", None))
+        self.lineGain.setText(QCoreApplication.translate("SetupWindow", u"100", None))
+        self.labelGain.setText(QCoreApplication.translate("SetupWindow", u"Gain (%)", None))
+        self.lineExposureTime.setText(QCoreApplication.translate("SetupWindow", u"1000", None))
+        self.pushApplyConf.setText(QCoreApplication.translate("SetupWindow", u"Apply", None))
+        self.groupROI.setTitle(QCoreApplication.translate("SetupWindow", u"Region of Interest", None))
+        self.labelSPPixel.setText(QCoreApplication.translate("SetupWindow", u"(0,0) pixel", None))
+        self.lineHeight.setText(QCoreApplication.translate("SetupWindow", u"0", None))
+        self.labelHeight.setText(QCoreApplication.translate("SetupWindow", u"  height (%)", None))
+        self.labelWidth.setText(QCoreApplication.translate("SetupWindow", u"  width (%)", None))
+        self.labelSP.setText(QCoreApplication.translate("SetupWindow", u"Start Point", None))
+        self.labelY0.setText(QCoreApplication.translate("SetupWindow", u"  y (%)", None))
+        self.lineY0.setText(QCoreApplication.translate("SetupWindow", u"0", None))
+        self.labelX0.setText(QCoreApplication.translate("SetupWindow", u"  x (%)", None))
+        self.lineWidth.setText(QCoreApplication.translate("SetupWindow", u"0", None))
+        self.lineX0.setText(QCoreApplication.translate("SetupWindow", u"0", None))
+        self.labelSizePixel.setText(QCoreApplication.translate("SetupWindow", u"(0,0) pixel", None))
+        self.labelSize.setText(QCoreApplication.translate("SetupWindow", u"ROI Size", None))
         self.groupFilter.setTitle(QCoreApplication.translate("SetupWindow", u"Filter", None))
         self.pushFilterApply.setText(QCoreApplication.translate("SetupWindow", u"Apply", None))
         self.comboFilter.setItemText(0, QCoreApplication.translate("SetupWindow", u"Select", None))
@@ -941,51 +1030,46 @@ class Ui_SetupWindow(object):
         self.comboFilter.setItemText(5, QCoreApplication.translate("SetupWindow", u"Bilateral", None))
 
         self.label.setText(QCoreApplication.translate("SetupWindow", u"Drag: draw ROI range, Left double click: set ROI, Right double click: reset ROI", None))
-        self.labelImage.setText("")
-        self.groupROI.setTitle(QCoreApplication.translate("SetupWindow", u"Region of Interest", None))
-        self.labelX0.setText(QCoreApplication.translate("SetupWindow", u"  x (%)", None))
-        self.labelY0.setText(QCoreApplication.translate("SetupWindow", u"  y (%)", None))
-        self.labelWidth.setText(QCoreApplication.translate("SetupWindow", u"  width (%)", None))
-        self.labelSize.setText(QCoreApplication.translate("SetupWindow", u"ROI Size", None))
-        self.labelSP.setText(QCoreApplication.translate("SetupWindow", u"Start Point", None))
-        self.labelHeight.setText(QCoreApplication.translate("SetupWindow", u"  height (%)", None))
-        self.lineWidth.setText(QCoreApplication.translate("SetupWindow", u"0", None))
-        self.labelSizePixel.setText(QCoreApplication.translate("SetupWindow", u"(0,0) pixel", None))
-        self.lineX0.setText(QCoreApplication.translate("SetupWindow", u"0", None))
-        self.lineY0.setText(QCoreApplication.translate("SetupWindow", u"0", None))
-        self.lineHeight.setText(QCoreApplication.translate("SetupWindow", u"0", None))
-        self.labelSPPixel.setText(QCoreApplication.translate("SetupWindow", u"(0,0) pixel", None))
-        self.groupCamera.setTitle(QCoreApplication.translate("SetupWindow", u"Camera", None))
-        self.labelGainRange.setText(QCoreApplication.translate("SetupWindow", u"(0 - 100)", None))
-        self.labelExposureTimeRange.setText(QCoreApplication.translate("SetupWindow", u"(25 - 1000000)", None))
-        self.labelExposureTime.setText(QCoreApplication.translate("SetupWindow", u"Exposure Time (\u03bcs)", None))
-        self.lineGain.setText(QCoreApplication.translate("SetupWindow", u"100", None))
-        self.labelGain.setText(QCoreApplication.translate("SetupWindow", u"Gain (%)", None))
-        self.lineExposureTime.setText(QCoreApplication.translate("SetupWindow", u"1000", None))
-        self.pushApplyConf.setText(QCoreApplication.translate("SetupWindow", u"Apply", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPhoto), QCoreApplication.translate("SetupWindow", u"Photo", None))
-        self.pushOpenImage.setText(QCoreApplication.translate("SetupWindow", u"Open", None))
+        self.label_16.setText(QCoreApplication.translate("SetupWindow", u"Pixel per mm", None))
+        self.linePixelPerMM_y.setText(QCoreApplication.translate("SetupWindow", u"1.0", None))
+        self.label_17.setText(QCoreApplication.translate("SetupWindow", u"x", None))
+        self.linePixelPerMM_x.setText(QCoreApplication.translate("SetupWindow", u"1.0", None))
+        self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tabRectangle), QCoreApplication.translate("SetupWindow", u"Rectangle", None))
+        self.label_14.setText(QCoreApplication.translate("SetupWindow", u"4", None))
+        self.lineQuad4y.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.lineQuad3y.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.lineQuad2y.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.label_9.setText(QCoreApplication.translate("SetupWindow", u"x (mm)", None))
+        self.label_10.setText(QCoreApplication.translate("SetupWindow", u"y (mm)", None))
+        self.lineQuad2x.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.lineQuad4x.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.label_7.setText(QCoreApplication.translate("SetupWindow", u"Real space coordinate", None))
+        self.label_11.setText(QCoreApplication.translate("SetupWindow", u"1", None))
+        self.label_13.setText(QCoreApplication.translate("SetupWindow", u"3", None))
+        self.lineQuad1y.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.lineQuad1x.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.label_8.setText(QCoreApplication.translate("SetupWindow", u"Quadrant", None))
+        self.label_12.setText(QCoreApplication.translate("SetupWindow", u"2", None))
+        self.lineQuad3x.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
+        self.tabWidget_2.setTabText(self.tabWidget_2.indexOf(self.tabPoint), QCoreApplication.translate("SetupWindow", u"Point", None))
         self.lineRotationAngle.setText(QCoreApplication.translate("SetupWindow", u"0.0", None))
         self.labelRotationAngle.setText(QCoreApplication.translate("SetupWindow", u"Rotation angle (deg)", None))
-        self.label_5.setText(QCoreApplication.translate("SetupWindow", u"10", None))
+        self.pushAngleUp.setText("")
+        self.labelPosition.setText(QCoreApplication.translate("SetupWindow", u"Position:", None))
+        self.label_5.setText(QCoreApplication.translate("SetupWindow", u"10 ", None))
         self.label_2.setText(QCoreApplication.translate("SetupWindow", u"0.01", None))
-        self.label_3.setText(QCoreApplication.translate("SetupWindow", u"0.1", None))
+        self.label_3.setText(QCoreApplication.translate("SetupWindow", u" 0.1", None))
         self.label_4.setText(QCoreApplication.translate("SetupWindow", u"1", None))
         self.label_6.setText(QCoreApplication.translate("SetupWindow", u"100", None))
-        self.pushAngleUp.setText("")
-        self.pushAngleDown.setText("")
         self.labelExplanation2.setText(QCoreApplication.translate("SetupWindow", u"Left click: Add transformation point, Right click: Erase transformation point", None))
+        self.pushAngleDown.setText("")
         self.labelExplanation.setText(QCoreApplication.translate("SetupWindow", u"Ctrl + arrow keys: Move last point", None))
-        self.labelPosition.setText(QCoreApplication.translate("SetupWindow", u"Position:", None))
-        self.label_23.setText(QCoreApplication.translate("SetupWindow", u"mm/pixel", None))
-        self.label_19.setText(QCoreApplication.translate("SetupWindow", u"x", None))
-        self.label_22.setText(QCoreApplication.translate("SetupWindow", u"Pixel to actual length of original image", None))
-        self.label_24.setText(QCoreApplication.translate("SetupWindow", u"mm/pixel", None))
-        self.label_21.setText(QCoreApplication.translate("SetupWindow", u"Transformed image size:", None))
-        self.label_20.setText(QCoreApplication.translate("SetupWindow", u"Vertical:", None))
-        self.label_18.setText(QCoreApplication.translate("SetupWindow", u"Horizontal:", None))
-        self.labelOrigin.setText("")
+        self.labelPerspective.setText(QCoreApplication.translate("SetupWindow", u"Perspective Matrix", None))
         self.labelTrans.setText("")
+        self.pushOpenImage.setText(QCoreApplication.translate("SetupWindow", u"Open", None))
+        self.pushCalCapture.setText(QCoreApplication.translate("SetupWindow", u"Capture", None))
+        self.labelOrigin.setText("")
         self.pushConvert.setText(QCoreApplication.translate("SetupWindow", u"Convert", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabCalibration), QCoreApplication.translate("SetupWindow", u"Calibration", None))
     # retranslateUi
