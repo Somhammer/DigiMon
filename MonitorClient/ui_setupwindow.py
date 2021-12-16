@@ -157,6 +157,12 @@ class Ui_SetupWindow(object):
         self.groupControllerConnection.setFont(font)
         self.gridLayout_5 = QGridLayout(self.groupControllerConnection)
         self.gridLayout_5.setObjectName(u"gridLayout_5")
+        self.checkUseControlServer = QCheckBox(self.groupControllerConnection)
+        self.checkUseControlServer.setObjectName(u"checkUseControlServer")
+        self.checkUseControlServer.setFont(font1)
+
+        self.gridLayout_5.addWidget(self.checkUseControlServer, 0, 0, 1, 2)
+
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.lineControllerIP1 = QLineEdit(self.groupControllerConnection)
@@ -229,17 +235,17 @@ class Ui_SetupWindow(object):
         self.horizontalLayout.addWidget(self.lineControllerIP5)
 
 
-        self.gridLayout_5.addLayout(self.horizontalLayout, 2, 1, 1, 1)
+        self.gridLayout_5.addLayout(self.horizontalLayout, 1, 1, 1, 1)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.gridLayout_5.addItem(self.verticalSpacer_2, 3, 0, 1, 1)
 
         self.labelControllerIP1 = QLabel(self.groupControllerConnection)
         self.labelControllerIP1.setObjectName(u"labelControllerIP1")
         self.labelControllerIP1.setFont(font1)
 
-        self.gridLayout_5.addWidget(self.labelControllerIP1, 2, 0, 1, 1)
-
-        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-
-        self.gridLayout_5.addItem(self.verticalSpacer_2, 3, 0, 1, 1)
+        self.gridLayout_5.addWidget(self.labelControllerIP1, 1, 0, 1, 1)
 
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
@@ -262,23 +268,17 @@ class Ui_SetupWindow(object):
 
         self.gridLayout_5.addLayout(self.horizontalLayout_2, 4, 0, 1, 2)
 
-        self.checkUseControlServer = QCheckBox(self.groupControllerConnection)
-        self.checkUseControlServer.setObjectName(u"checkUseControlServer")
-        self.checkUseControlServer.setFont(font1)
+        self.comboMonitor = QComboBox(self.groupControllerConnection)
+        self.comboMonitor.setObjectName(u"comboMonitor")
+        self.comboMonitor.setFont(font1)
 
-        self.gridLayout_5.addWidget(self.checkUseControlServer, 0, 0, 1, 2)
+        self.gridLayout_5.addWidget(self.comboMonitor, 2, 1, 1, 1)
 
-        self.labelPVName = QLabel(self.groupControllerConnection)
-        self.labelPVName.setObjectName(u"labelPVName")
-        self.labelPVName.setFont(font1)
+        self.labelMonitorNumber = QLabel(self.groupControllerConnection)
+        self.labelMonitorNumber.setObjectName(u"labelMonitorNumber")
+        self.labelMonitorNumber.setFont(font1)
 
-        self.gridLayout_5.addWidget(self.labelPVName, 1, 0, 1, 1)
-
-        self.linePVName = QLineEdit(self.groupControllerConnection)
-        self.linePVName.setObjectName(u"linePVName")
-        self.linePVName.setFont(font1)
-
-        self.gridLayout_5.addWidget(self.linePVName, 1, 1, 1, 1)
+        self.gridLayout_5.addWidget(self.labelMonitorNumber, 2, 0, 1, 1)
 
         self.textConnectionLog = QTextBrowser(self.tabConnection)
         self.textConnectionLog.setObjectName(u"textConnectionLog")
@@ -313,6 +313,9 @@ class Ui_SetupWindow(object):
         self.labelImage.setFocusPolicy(Qt.ClickFocus)
         self.labelImage.setFrameShape(QFrame.NoFrame)
         self.labelImage.setAlignment(Qt.AlignCenter)
+
+        self.gridLayout.addWidget(self.labelImage, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
+
 
         self.gridLayout_7.addWidget(self.frameImage, 0, 0, 3, 1, Qt.AlignHCenter|Qt.AlignVCenter)
 
@@ -872,6 +875,9 @@ class Ui_SetupWindow(object):
         self.labelTrans.setMaximumSize(QSize(450, 450))
         self.labelTrans.setAlignment(Qt.AlignCenter)
 
+        self.gridLayout_10.addWidget(self.labelTrans, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
+
+
         self.gridLayout_6.addWidget(self.frameTrans, 1, 4, 1, 2, Qt.AlignHCenter|Qt.AlignVCenter)
 
         self.pushOpenImage = QPushButton(self.tabCalibration)
@@ -902,6 +908,9 @@ class Ui_SetupWindow(object):
         self.labelOrigin.setFrameShape(QFrame.NoFrame)
         self.labelOrigin.setAlignment(Qt.AlignCenter)
 
+        self.gridLayout_9.addWidget(self.labelOrigin, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
+
+
         self.gridLayout_6.addWidget(self.frameOrigin, 1, 0, 1, 4, Qt.AlignHCenter|Qt.AlignVCenter)
 
         self.pushConvert = QPushButton(self.tabCalibration)
@@ -923,8 +932,7 @@ class Ui_SetupWindow(object):
         QWidget.setTabOrder(self.lineCameraAddr, self.pushConnectCamera)
         QWidget.setTabOrder(self.pushConnectCamera, self.checkCameraConnected)
         QWidget.setTabOrder(self.checkCameraConnected, self.checkUseControlServer)
-        QWidget.setTabOrder(self.checkUseControlServer, self.linePVName)
-        QWidget.setTabOrder(self.linePVName, self.lineControllerIP1)
+        QWidget.setTabOrder(self.checkUseControlServer, self.lineControllerIP1)
         QWidget.setTabOrder(self.lineControllerIP1, self.lineControllerIP2)
         QWidget.setTabOrder(self.lineControllerIP2, self.lineControllerIP3)
         QWidget.setTabOrder(self.lineControllerIP3, self.lineControllerIP4)
@@ -964,8 +972,8 @@ class Ui_SetupWindow(object):
 
         self.retranslateUi(SetupWindow)
 
-        self.tabWidget.setCurrentIndex(1)
-        self.tabWidget_2.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget_2.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(SetupWindow)
@@ -988,6 +996,7 @@ class Ui_SetupWindow(object):
         self.pushConnectCamera.setText(QCoreApplication.translate("SetupWindow", u"Connect", None))
         self.checkCameraConnected.setText(QCoreApplication.translate("SetupWindow", u"Connected", None))
         self.groupControllerConnection.setTitle(QCoreApplication.translate("SetupWindow", u"Controller", None))
+        self.checkUseControlServer.setText(QCoreApplication.translate("SetupWindow", u"Use Screen Controller", None))
         self.labelControllerIP2.setText(QCoreApplication.translate("SetupWindow", u".", None))
         self.labelControllerIP3.setText(QCoreApplication.translate("SetupWindow", u".", None))
         self.labelControllerIP4.setText(QCoreApplication.translate("SetupWindow", u".", None))
@@ -995,8 +1004,7 @@ class Ui_SetupWindow(object):
         self.labelControllerIP1.setText(QCoreApplication.translate("SetupWindow", u"IP Address", None))
         self.pushConnectController.setText(QCoreApplication.translate("SetupWindow", u"Connect", None))
         self.checkControllerConnected.setText(QCoreApplication.translate("SetupWindow", u"Connected", None))
-        self.checkUseControlServer.setText(QCoreApplication.translate("SetupWindow", u"Use Screen Controller", None))
-        self.labelPVName.setText(QCoreApplication.translate("SetupWindow", u"PV Name", None))
+        self.labelMonitorNumber.setText(QCoreApplication.translate("SetupWindow", u"Monitor Number", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabConnection), QCoreApplication.translate("SetupWindow", u"Connection", None))
         self.labelImage.setText("")
         self.groupCamera.setTitle(QCoreApplication.translate("SetupWindow", u"Camera", None))

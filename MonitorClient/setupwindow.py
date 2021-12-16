@@ -38,7 +38,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.labelOrigin = DigiLabel(self.labelOrigin)
         self.gridLayout_9.addWidget(self.labelOrigin, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
 
-
         self.ratio_width = self.ratio_height = 1
 
         self.initialize_parameter()
@@ -90,6 +89,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.camera_connected = self.controller_connected = self.select_ROI = self.calibrated = self.draw_square = False
 
         self.camera_sdk = self.comboSDKType.currentText()
+        self.monitor_number = self.comboMonitor.currentText()
 
         self.captured_image = None
         self.captured_image_aratio = None
@@ -165,6 +165,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushConnectController.clicked.connect(lambda: self.connect_network(self.parent.blackberry, self.checkControllerConnected))
 
         self.comboSDKType.currentTextChanged.connect(self.set_sdk)
+
+        self.comboMonitor.addItem('')
+        for i in range(NUMBER_OF_MONITORS):
+            self.comboMonitor.addItem(f"{PV_NAME_RANK1}{i}")
+
+        self.comboMonitor.currentTextChanged.connect(self.set_monitor)
 
         # Photo
         self.labelImage.move.connect(self.set_ROI)
@@ -313,6 +319,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
     ### Methods for Connection
     def set_sdk(self):
         self.camera_sdk = self.comboSDKType.currentText()
+
+    def set_monitor(self):
+        if self.parent.blackberry is not None:
+            self.parent.blackberry.set_monitor(self.comboMonitor.currentText())
 
     def connect_network(self, berry, checkbox):
         if berry.name == "Network Camera":

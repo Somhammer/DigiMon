@@ -128,8 +128,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushFilpRightLeft.clicked.connect(lambda: self.parameter_signal.emit(CAMERA_FLIP_RIGHT_LEFT, 1))
 
         # Screen Zoom
-        self.pushScreenDown.clicked.connect(lambda: self.blackberry.send_command('down'))
-        self.pushScreenUp.clicked.connect(lambda: self.blackberry.send_command('up'))
+        self.pushScreenDown.clicked.connect(lambda: self.blackberry.receive_request(REQUEST_GO_DOWN))
+        self.pushScreenUp.clicked.connect(lambda: self.blackberry.receive_request(REQUEST_GO_UP))
 
         # Emittance Measurement
         self.pushEmittance.clicked.connect(self.measure_emittance)
@@ -219,6 +219,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.blueberry.working = False
         self.blueberry.stop()
         self.blueberry.initialize()
+
+        self.blackberry.working = False
+        self.blackberry.stop()
+        self.blackberry.initialize()
+
         self.parameter_signal.emit(CAMERA_FPS, self.sliderFrameRate.value())
         self.parameter_signal.emit(CAMERA_REPEAT, self.sliderRepeat.value())
         self.parameter_signal.emit(CAMERA_GAIN, 100)
@@ -254,6 +259,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.blueberry.connected:
                 self.blueberry.working = True
                 self.blueberry.start()
+            
+            if self.blackberry.connected:
+                self.blackberry.working = True
+                self.blackberry.start()
 
         self.dialog = False
 
@@ -327,6 +336,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             event.accept()
         else:
             event.ignore()
+
+    @Slot(str)
+    def actuator_status(self, message):
+        self.labelScreenStatus.setText(f"Status: {message}")
 
     @Slot(bool)
     def stopwatch(self, start=False):
