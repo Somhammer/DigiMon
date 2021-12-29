@@ -104,6 +104,7 @@ class ProfileMonitor(PVGroup):
                 self.connected = False
             elif upper_status == lower_status == 1:
                 log_queue.put(f"ERROR:Monitor{self.number} - Both switches look activated.")
+                self.connected = False
             else:
                 log_queue.put(f"STATUS:Monitor{self.number} - BPM is connected.")
                 self.connected = True

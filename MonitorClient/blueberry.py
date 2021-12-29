@@ -39,23 +39,13 @@ class Blueberry(QThread):
     save_signal = Signal(str)
     plot_signal = Signal(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
 
-    def __init__(self, parent=None):
+    def __init__(self, queue_for_analyze, return_queue, parent=None):
         super().__init__()
         self.name = "Network Camera"
+        self.queue_for_analyze = queue_for_analyze
+        self.return_queue = return_queue
         self.parent = parent
 
-        self.set_action()
-        self.initialize()
-
-    def set_action(self):
-        self.watch_signal.connect(self.parent.stopwatch)
-        self.thread_logger_signal.connect(self.parent.receive_log)
-        self.screen_signal.connect(self.parent.update_screen)
-        self.graph_signal.connect(self.parent.update_screen)
-        self.save_signal.connect(self.parent.save_image)
-        self.plot_signal.connect(self.parent.save_pretty_plot)
-
-    def initialize(self):
         self.connected = False
 
         self.camera = None
@@ -72,6 +62,7 @@ class Blueberry(QThread):
         self.pixel_per_mm = [1.0, 1.0]
 
         self.original_pixel = None
+        self.resized_pixel = None
 
         self.working = True
 
@@ -90,6 +81,8 @@ class Blueberry(QThread):
         self.flip_rl = 0
         self.flip_ud = 0
 
+        self.current = 0.0
+
         self.outdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'output', datetime.datetime.today().strftime('%y%m%d'))
         if not os.path.exists(self.outdir):
             os.makedirs(self.outdir)
@@ -99,6 +92,16 @@ class Blueberry(QThread):
             os.makedirs(os.path.join(self.outdir, 'profile'))
         if not os.path.exists(os.path.join(self.outdir, 'emittance')):
             os.makedirs(os.path.join(self.outdir, 'emittance'))
+
+        self.set_action()
+
+    def set_action(self):
+        self.watch_signal.connect(self.parent.stopwatch)
+        self.thread_logger_signal.connect(self.parent.receive_log)
+        self.screen_signal.connect(self.parent.update_screen)
+        self.graph_signal.connect(self.parent.update_screen)
+        self.save_signal.connect(self.parent.save_image)
+        self.plot_signal.connect(self.parent.save_pretty_plot)
 
     def connection(self, url):
         self.url = url
@@ -189,34 +192,22 @@ class Blueberry(QThread):
                     if self.idx == CAMERA_EXIT: break
                     if self.idx == CAMERA_CAPTURE:
                         self.watch_signal.emit(True)
-                        queue = []
+                        self.watch_signal.emit(True)
                         for i in range(1, self.repeat+1):
                             if self.idx == CAMERA_STOP: break
-                            queue.append(self.take_a_picture())
-                            #self.msleep(self.exposure_time)
+                            self.take_a_picture()
                             self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
 
-                        self.thread_logger_signal.emit('INFO', f"Analyze pictures")
-                        for image in queue:
-                            outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
-                            cv2.imwrite(outname, image)
-                            self.save_signal.emit(outname)
-                            xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
-                            beam_range = xrange + yrange
-
-                            self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
-                            self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
-                            self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
-                            self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
-                        self.thread_logger_signal.emit('INFO', f'Analysis is completed')
-                        self.watch_signal.emit(False)
                         self.idx = CAMERA_SHOW
+                        self.watch_signal.emit(False)
+                    else:
+                        img_resp = cv2.VideoCapture(self.url)
+                        retval, image = img_resp.read()
+                        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                        self.show_screen(image)
+                        #self.msleep(int((1.0/self.frame)*1000))
+                    self.take_data_from_queue()
 
-                    img_resp = cv2.VideoCapture(self.url)
-                    retval, image = img_resp.read()
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                    self.show_screen(image)
-                    self.msleep(int((1.0/self.frame)*1000))
             except:
                 self.thread_logger_signal.emit('ERROR', f'Connection was broken.')
                 self.connected = False
@@ -227,28 +218,13 @@ class Blueberry(QThread):
                 if self.idx == CAMERA_EXIT: break
                 if self.idx == CAMERA_CAPTURE:
                     self.watch_signal.emit(True)
-                    queue = []
                     for i in range(1, self.repeat+1):
                         if self.idx == CAMERA_STOP: break
-                        queue.append(self.take_a_picture())
-                        #self.msleep(self.exposure_time)
+                        self.take_a_picture()
                         self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
-
-                    self.thread_logger_signal.emit('INFO', f"Analyze pictures")
-                    for image in queue:
-                        outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
-                        cv2.imwrite(outname, image)
-                        self.save_signal.emit(outname)
-                        xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
-                        beam_range = xrange + yrange
-
-                        self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
-                        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
-                        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
-                        self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
-                    self.thread_logger_signal.emit('INFO', f'Analysis is completed')
-                    self.watch_signal.emit(False)
+                   
                     self.idx = CAMERA_SHOW
+                    self.watch_signal.emit(False)
 
                 with Vimba.get_instance() as vimba:
                     cams = vimba.get_all_cameras()
@@ -272,7 +248,8 @@ class Blueberry(QThread):
                         except:
                             image = None
                         self.show_screen(image)
-                        self.msleep(int((1.0/self.frame)*1000))
+                    self.take_data_from_queue()
+                        #self.msleep(int((1.0/self.frame)*1000))
 
         elif "Pylon" in self.sdk:
             try:
@@ -301,26 +278,10 @@ class Blueberry(QThread):
                     if self.idx == CAMERA_CAPTURE:
                         self.watch_signal.emit(True)
                         self.camera.StopGrabbing()
-                        queue = []
                         for i in range(1, self.repeat+1):
                             if self.idx == CAMERA_STOP: break
-                            queue.append(self.take_a_picture())
-                            #self.msleep(self.exposure_time)
+                            self.take_a_picture()
                             self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
-
-                        self.thread_logger_signal.emit('INFO', f"Analyze pictures")
-                        for image in queue:
-                            outname = os.path.join(self.outdir, 'image', f"out{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
-                            cv2.imwrite(outname, image)
-                            self.save_signal.emit(outname)
-                            xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
-                            beam_range = xrange + yrange
-
-                            self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
-                            self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
-                            self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
-                            self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
-                        self.thread_logger_signal.emit('INFO', f'Analysis is completed')
 
                         self.idx = CAMERA_SHOW
                         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
@@ -335,7 +296,8 @@ class Blueberry(QThread):
                             else:
                                 image = None
                         self.show_screen(image)
-                        self.msleep(int((1.0/self.frame)*1000))
+                    self.take_data_from_queue()
+                        #self.msleep(int((1.0/self.frame)*1000))
             except:
                 self.thread_logger_signal.emit('ERROR', f'Connection was broken.')
                 self.connected = False
@@ -344,74 +306,6 @@ class Blueberry(QThread):
         self.working = False
         self.sleep(1)
         self.quit()
-
-    def rotate_image(self, image):
-        center = (round(image.shape[1]/2), round(image.shape[0]/2))
-        angle = float(self.rotate_angle)
-        matrix = cv2.getRotationMatrix2D(center, angle, 1)
-        image = cv2.warpAffine(image, matrix, (0,0))
-
-        if self.rotation == 90:
-            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        elif self.rotation == 180:
-            image = cv2.rotate(image, cv2.ROTATE_180)
-        elif self.rotation == 270:
-            image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-        if self.flip_rl == 1:
-            image = cv2.flip(image, 1)
-        
-        if self.flip_ud == 1:
-            image = cv2.flip(image, 0)
-
-        return image
-
-    def filter_image(self, image):
-        if self.filter_code == BKG_SUBSTRACTION:
-            background = cv2.imread(self.filter_para['background file'])
-            filtered_image = cv2.subtract(image, background)
-        if self.filter_code == GAUSSIAN_FILTER:
-            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
-            sigmaX = self.filter_para['sigmaX']
-            filtered_image = cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigmaX)
-        elif self.filter_code == MEDIAN_FILTER:
-            ksize = self.filter_para['kernal size']
-            filtered_image = cv2.medianBlur(image, ksize=ksize)
-        elif self.filter_code == BILATERAL_FILTER:
-            ksize = self.filter_para['kernal size']
-            scolor = self.filter_para['sigma color']
-            sspace = self.filter_para['sigma space']
-            filtered_image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
-        else:
-            filtered_image = image
-        
-        return filtered_image
-
-    def transform_image(self, image):
-        if self.do_transformation:
-            width = self.destination_points[2][0] - self.destination_points[0][0]
-            height = self.destination_points[1][1] - self.destination_points[0][1]
-            #destination_points = [(0,0),(0,height),(width,0),(width,height)]
-            transform_matrix = cv2.getPerspectiveTransform(np.float32(self.transform_points), np.float32(self.destination_points))
-
-            # 단순 perspective transformation은 왜곡이 발생함. -> 실험으로 확인
-            width, height = image.shape[1], image.shape[0]
-            transformed_image = cv2.warpPerspective(image, transform_matrix, (width, height))
-        else:
-            transformed_image = image
-        
-        return transformed_image
-
-    def slice_image(self, image):
-        if self.ROI == [[0,0],[0,0]]: return image
-        if [self.ROI[1][0], self.ROI[1][1]] == [image.shape[1], image.shape[0]]: return image
-
-        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
-        src = image.copy()
-        image = src[y:y+height, x:x+width]
-        height, width = image.shape
-        image = cv2.resize(image, dsize=(height, width), interpolation=cv2.INTER_LINEAR)
-        return image
 
     def take_a_picture(self, setup=False):
         image = None
@@ -487,110 +381,47 @@ class Blueberry(QThread):
 
         self.original_image = image.copy()
         self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
+        
+        image = ut.filter_image(image, self.filter_code, self.filter_para)
+        image = ut.rotate_image(image, angle=self.calibration_angle)
+        image = ut.transform_image(image, self.transform_points, self.destination_points)
+        image = ut.slice_image(image, self.ROI)
+        image = ut.rotate_image(image, angle=0, quadrant = self.rotation, flip_rl = self.flip_rl, flip_ud = self.flip_ud)
+                        
+        outname = os.path.join(self.outdir, 'image', f"{datetime.datetime.today().strftime('%H-%M-%S_%f')[:-3]}_{self.current}A_Exp{self.exposure_time}_Gain{self.gain}.png")
+        cv2.imwrite(outname, image)
+        self.save_signal.emit(outname)
 
-        image = self.rotate_image(image)
-        image = self.filter_image(image)
-        image = self.transform_image(image)
-        image = self.slice_image(image)
-
-        return image
+        element = [image, self.intensity_line, self.pixel_per_mm, self.original_pixel, self.resized_pixel, True]
+        self.queue_for_analyze.put(element)
             
     def show_screen(self, image):
-        print("Show screen")
         if not self.connected: return
         if not self.working: return
 
         self.original_image = image.copy()
         self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
-        print("filter")
         image = ut.filter_image(image, self.filter_code, self.filter_para)
-        print("rotate1")
         image = ut.rotate_image(image, angle=self.calibration_angle)
-        print('transform')
         image = ut.transform_image(image, self.transform_points, self.destination_points)
-        print('slice')
         image = ut.slice_image(image, self.ROI)
-        print('rotate2')
         image = ut.rotate_image(image, angle=0, quadrant = self.rotation, flip_rl = self.flip_rl, flip_ud = self.flip_ud)
-        print('analyze_picture')
-        xbin, ybin, xhist_percent, yhist_percent, xrange, yrange = self.analyze_picture(image=image)
+        element = [image, self.intensity_line, self.pixel_per_mm, self.original_pixel, self.resized_pixel, False]
+        self.queue_for_analyze.put(element)
 
-        print("Send Signal")
-        self.screen_signal.emit(PICTURE_SCREEN, image)
-        self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(xbin, xhist_percent)), xrange)
-        self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(ybin, yhist_percent)), yrange)
-        print("End show screen")
-    
-    def analyze_picture(self, image, shot=False):
-        image = image
-        #self.original_pixel = [image.shape[1], image.shape[0]]
-
-        print("CVT color")
-        if len(image.shape) == 3:
-            grayimage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            grayimage = image
-        nypixel, nxpixel = grayimage.shape
-        print(f'pixel: {nypixel}, {nxpixel}')
-        print(f"pixel per mm: {self.pixel_per_mm}")
-        mm_per_pixel = [1.0/self.pixel_per_mm[0], 1.0/self.pixel_per_mm[1]]
-        print(f'mm per pixel: {mm_per_pixel}')
-        total_x = self.original_pixel[0] * mm_per_pixel[0]
-        total_y = self.original_pixel[1] * mm_per_pixel[1]
-        mm_per_pixel_x = total_x / nxpixel
-        mm_per_pixel_y = total_y / nypixel
-        self.xmin = -round(total_x / 2.0)
-        self.ymin = -round(total_y / 2.0)
-        xbin = [self.xmin + float(i) * mm_per_pixel_x for i in range(nxpixel)]
-        ybin = [self.ymin + float(i) * mm_per_pixel_y for i in range(nypixel)]
-
-        print("??!")
-        xhist, yhist = [], []
-        if shot:
-            xhist = [0 for i in range(nxpixel)]
-            yhist = [0 for i in range(nypixel)]
-            
-            for xidx in range(nxpixel):
-                for yidx in range(nypixel):
-                    xhist[xidx] += grayimage[yidx][xidx]
-                    yhist[yidx] += grayimage[yidx][xidx]
-        else:
-            intensity_line = self.intensity_line
-            if intensity_line[0] == -1:
-                intensity_line[0] = round(len(xbin) / 2)
-            if intensity_line[1] == -1:
-                intensity_line[1] = round(len(ybin) / 2)
-            
-            xhist, yhist = grayimage[intensity_line[0],:], grayimage[:,intensity_line[1]]
-
-        xhist_percent = np.asarray(xhist)/max(xhist) * 100
-        yhist_percent = np.asarray(yhist)/max(yhist) * 100
-
-        xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
-
-        xlength = len(np.where(xhist_percent > 32)[0]) * mm_per_pixel[0]
-        ylength = len(np.where(yhist_percent > 32)[0]) * mm_per_pixel[1]
-
-        print("Shot")
-        if shot:
-            gauss = lambda x, a, b, c: a*np.exp(-(x-b)**2/2*c**2)
-            try:
-                xfitpara, xfitconv = curve_fit(gauss, xbin, xhist_percent)
-                xfit = gauss(xbin, *xfitpara)
-                xfitline = list(zip(xbin, xfit))
-            except:
-                xfitline = list(zip(xbin, [0 for i in range(len(xbin))]))
-            try:
-                yfitpara, yfitconv = curve_fit(gauss, ybin, yhist_percent)
-                yfit = gauss(ybin, *yfitpara)
-                yfitline = list(zip(ybin, yfit))
-            except:
-                yfitline = list(zip(xbin, [0 for i in range(len(ybin))]))
-
-            return xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, [xbin[xmax], xlength], [ybin[ymax], ylength]
-
-        else:
-            return xbin, ybin, xhist_percent, yhist_percent, [xbin[xmax], xlength], [ybin[ymax], ylength]
+    def take_data_from_queue(self):
+        #if not self.return_queue.empty():
+        while not self.return_queue.empty():
+            element = self.return_queue.get()
+            if len(element) == 7:
+                self.screen_signal.emit(PICTURE_SCREEN, element[0])
+                self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(element[1], element[3])), element[5])
+                self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(element[2], element[4])), element[6])
+            else:
+                self.graph_signal.emit(PROFILE_SCREEN, element[0], element[5]+element[6])
+                self.graph_signal.emit(XSIZE_SCREEN, list(zip(element[1], element[3])), element[7])
+                self.graph_signal.emit(YSIZE_SCREEN, list(zip(element[2], element[4])), element[8])
+                self.plot_signal.emit(element[0], element[1], element[2], element[3], element[4], element[7], element[8])
 
     @Slot(int, list)
     def receive_signal_from_setup(self, idx, value):

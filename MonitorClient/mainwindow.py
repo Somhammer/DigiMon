@@ -3,6 +3,7 @@ import os, sys
 import logging
 import datetime
 import yaml
+import asyncio
 
 import numpy as np
 import cv2
@@ -30,9 +31,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     parameter_signal = Signal(int, int)
     redraw_signal = Signal(str)
 
-    def __init__(self):
+    def __init__(self, queue_for_analyze, return_queue):
         super(MainWindow, self).__init__()
         self.setupUi(self)
+        self.queue_for_analyze = queue_for_analyze
+        self.return_queue = return_queue
 
         self.dialog = False
 
@@ -56,7 +59,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.__password = "profile"
         self.blackberry = Blackberry(parent=self)
-        self.blueberry = Blueberry(parent=self)
+        self.blueberry = Blueberry(queue_for_analyze=self.queue_for_analyze, return_queue=self.return_queue, parent=self)
         
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
@@ -111,7 +114,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.labelCamera.move.connect(self.set_line)
 
         # Camera Setup
-        self.pushSetup.clicked.connect(self.setup_camera)
+        self.pushSetup.clicked.connect(self.setup_module)
         self.sliderFrameRate.valueChanged.connect(lambda: self.lineFrameRate.setText(str(self.sliderFrameRate.value())))
         self.sliderFrameRate.sliderReleased.connect(lambda: self.parameter_signal.emit(CAMERA_FPS, self.sliderFrameRate.value()))
         self.sliderRepeat.valueChanged.connect(lambda: self.lineRepeat.setText(str(self.sliderRepeat.value())))
@@ -134,6 +137,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Emittance Measurement
         self.pushEmittance.clicked.connect(self.measure_emittance)
         self.pushOpenImage.clicked.connect(self.open_image)
+
+        def set_current(current):
+            self.blueberry.current = current
+
+        self.lineFieldGradient.textChanged.connect(lambda: set_current(self.lineFieldGradient.text()))
         self.tableProfiles.doubleClicked.connect(lambda: self.redraw_signal.emit(self.images_names[self.tableProfiles.currentIndex().row()]))
 
         self.timer.timeout.connect(self.timeout)
@@ -214,11 +222,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
         self.labelCamera.resize(self.frameCamera.width()-self.layoutMargin, self.frameCamera.height()-self.layoutMargin)
 
-    def setup_camera(self):
+    def setup_module(self):
         if self.dialog: return
         self.blueberry.working = False
         self.blueberry.stop()
-        self.blueberry.initialize()
+        #self.blueberry.initialize()
 
         self.blackberry.working = False
         self.blackberry.stop()
@@ -263,6 +271,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.blackberry.connected:
                 self.blackberry.working = True
                 self.blackberry.start()
+                self.blackberry.setPriority(QThread.IdlePriority)
+
 
         self.dialog = False
 
@@ -322,6 +332,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if self.labelCamera is not None:
             self.labelCamera.resize(self.image_size[0], self.image_size[1])
+            self.blueberry.resized_pixel = [self.labelCamera.width(), self.labelCamera.height()]
         if self.profile is not None:
             self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
         if self.beamx is not None:

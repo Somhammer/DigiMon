@@ -1,5 +1,7 @@
 import os, sys
 import time
+import asyncio
+
 from PySide6.QtCore import *
 from caproto.threading.client import Context
 
@@ -54,21 +56,16 @@ class Blackberry(QThread):
         finally:
             return message
 
-    def run(self):
-        while self.working:
-            if any(i == self.request for i in [REQUEST_GO_UP, REQUEST_GO_DOWN]) and self.request != self.previous_request:
-                self.pvs['request'].write(self.request)
-                t = 0
-                while t <= 9:
-                    self.send_status()
-                    t += 3
-                    time.sleep(3)
-                self.previous_request = self.request
+    async def run(self):
+        if any(i == self.request for i in [REQUEST_GO_UP, REQUEST_GO_DOWN]) and self.request != self.previous_request:
+            self.pvs['request'].write(self.request)
+            self.previous_request = self.request
 
     def stop(self):
         self.working = False
-        self.sleep(1)
+        #self.sleep(1)
         self.quit()
+        self.wait(2000)
 
     def set_monitor(self, monitor):
         self.monitor = monitor
@@ -80,15 +77,8 @@ class Blackberry(QThread):
                     self.pvs['status'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status']
 
     def send_status(self):
-        print("SEND STATUS")
-        """
-        만약 스크린 업, 다운 명령이 들어오면 스테이터스 한 번 읽게 요청하고,
-        그 뒤에 30초 동안 3초에 한 번 씩, 스테이터스 한 번 씩 읽게 하기로.
-        """
         self.pvs['request'].write(REQUEST_STATUS)
-        print(self.pvs['status'].read())
         status = self.pvs['status'].read().data[0]
-        print(f"Status: {status}")
         message = ''
         if status == ACTUATOR_UP:
             message = "Screen monitor is up."
@@ -104,7 +94,6 @@ class Blackberry(QThread):
 
     @Slot(int)
     def receive_request(self, value):
-        print("RECEIVE_REQUEST")
         self.previous_request = self.request
         self.request = value
-        print(self.request, self.previous_request)
+        asyncio.run(self.run())
