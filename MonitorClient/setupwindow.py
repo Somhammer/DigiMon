@@ -246,14 +246,14 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             ROI: {str(self.ROI)}            
             FilterType: "{self.comboFilter.currentText()}"
             FilterParameter: {str(self.filter_para)}
-            CalibrationImage: "{self.calibration_image_name}"
+            CalibrationImage: "{str(self.calibration_image_name)}"
             Rotation: {self.lineRotationAngle.text()}
             PerspectiveMatrixMethod: {str(self.perspective_method)}
             """))
         if self.perspective_method is not None:
             fout.write(f"PerspectiveMatrixParameters: {str(self.perspective_para[self.perspective_method])}")
         else:
-            fout.write("PerspectiveMatrixParameters: {}")
+            fout.write("PerspectiveMatrixParameters: None")
         fout.close()
 
     def load(self, fname=''):
@@ -284,7 +284,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                         self.lineControllerIP4.setText(controller_ip[3])
                     self.lineControllerIP5.setText(str(cfg['ControllerPort']))
                     self.connect_network(self.parent.blackberry, self.checkControllerConnected)
-                
+
                 self.gain = int(cfg['Gain'])
                 self.sliderGain.setValue(self.gain)
                 self.exposure_time = int(cfg['ExposureTime'])
@@ -364,6 +364,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         if berry.name == 'Network Camera':
             self.take_a_picture()
+        
+        if self.camera_connected:
+            self.set_checked(self.checkConnection, True)
+
 
     ### Methods for Photo
     def set_photo_para(self, idx, slider=True):
@@ -443,6 +447,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             dsize = (screen_size[0], screen_size[1])
 
         height, width = image_copy.shape[0], image_copy.shape[1]
+
         if 0.99 < width / height < 1.01:
             dsize = (screen_size[0], screen_size[1])
 
@@ -454,6 +459,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         else:
             height, width = resized_image.shape
             qImg = QImage(resized_image.data, width, height, width, QImage.Format_Grayscale8)
+
         pixmap = QPixmap.fromImage(qImg)
 
         label.resize(width, height)
@@ -583,36 +589,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.listParameters.setItemWidget(witem, item)
                 self.listParameters.addItem(witem)
                 witem.setSizeHint(item.sizeHint())
-
-    def slice_image(self, image):
-        if self.ROI == [[0,0],[0,0]]: return image
-        if [self.ROI[1][0], self.ROI[1][1]] == [image.shape[1], image.shape[0]]: return image
-
-        x, y, width, height = self.ROI[0][0], self.ROI[0][1], self.ROI[1][0], self.ROI[1][1]
-        src = image.copy()
-        image = src[y:y+height, x:x+width]
-        return image
-
-    def filter_image(self, image):
-        if self.filter_code == BKG_SUBSTRACTION:
-            background = cv2.imread(self.filter_para['background file'])
-            filtered_image = cv2.subtract(image, background)
-        if self.filter_code == GAUSSIAN_FILTER:
-            ksize = (self.filter_para['x kernal size'], self.filter_para['y kernal size'])
-            sigmaX = self.filter_para['sigmaX']
-            filtered_image = cv2.GaussianBlur(image, ksize=ksize, sigmaX=sigmaX)
-        elif self.filter_code == MEDIAN_FILTER:
-            ksize = self.filter_para['kernal size']
-            filtered_image = cv2.medianBlur(image, ksize=ksize)
-        elif self.filter_code == BILATERAL_FILTER:
-            ksize = self.filter_para['kernal size']
-            scolor = self.filter_para['sigma color']
-            sspace = self.filter_para['sigma space']
-            filtered_image = cv2.bilateralFilter(image, d=ksize, sigmaColor=scolor, sigmaSpace=sspace)
-        else:
-            filtered_image = image
-        
-        return filtered_image
 
     ### Methods for Calibration
     def open_calibration_image(self):
@@ -805,15 +781,28 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.original_points = [upper_left, lower_left, upper_right, lower_right]
 
         if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == "Rectangle":
-            w = int(sum([math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)])/2)
-            h = int(sum([math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)])/2)
-
+            w, h = -9999, -9999
+            for coordinate in self.original_points:
+                w_tmp = round(abs(half_width - coordinate[0]))
+                h_tmp = round(abs(half_height - coordinate[1]))
+                if w < w_tmp: w = w_tmp
+                if h < h_tmp: h = h_tmp
+            
             self.destination_points = [
-                [round(half_width - w/2), round(half_height - h/2)],
-                [round(half_width - w/2), round(half_height + h/2)],
-                [round(half_width + w/2), round(half_height - h/2)],
-                [round(half_width + w/2), round(half_height + h/2)]
+                [round(half_width - w), round(half_height - h)],
+                [round(half_width - w), round(half_height + h)],
+                [round(half_width + w), round(half_height - h)],
+                [round(half_width + w), round(half_height + h)]
             ]
+            #w = int(sum([math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)])/2)
+            #h = int(sum([math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)])/2)
+
+            #self.destination_points = [
+                #[round(half_width - w/2), round(half_height - h/2)],
+                #[round(half_width - w/2), round(half_height + h/2)],
+                #[round(half_width + w/2), round(half_height - h/2)],
+                #[round(half_width + w/2), round(half_height + h/2)]
+            #]
             self.pixel_per_mm = [float(self.linePixelPerMM_x.text()), float(self.linePixelPerMM_y.text())]
         else:
             x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad2x.text()), float(self.lineQuad4y.text())
@@ -832,8 +821,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.transformed_image = cv2.warpPerspective(image, self.transform_matrix, (image.shape[1], image.shape[0]))
 
         self.draw_calibration_image(self.transformed_image, False)
-        print(self.pixel_per_mm)
         self.calibrated = True
+        if self.calibrated:
+            self.set_checked(self.checkCalibration, True)
 
     ### Methods for close
     def click_ok(self):

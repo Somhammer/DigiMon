@@ -26,15 +26,16 @@ if __name__ == '__main__':
     # Intensity histogram queue
     # Element type: List
     # If input image is captured image:
-    # Element length = 8
+    # Element length = 9
     # If input image is streaming image:
-    # Element length = 6
+    # Element length = 7
     # Common variable in queue element list
-    # Element[0, 1] = x, y axis projected intensity histogram
-    # Element[2, 3] = x, y axis projected intensity percent histogram
-    # Element[4, 5] = Maximum intensity bin location and beam size for each axis
+    # Element[0] = Image array
+    # Element[1, 2] = x, y axis projected intensity histogram
+    # Element[3, 4] = x, y axis projected intensity percent histogram
+    # Element[5, 6] = Maximum intensity bin location and beam size for each axis
     # Variable for captured image
-    # Element[6, 7] = Fitting curve for each axis
+    # Element[7, 8] = Fitting curve for each axis
 
     app = QApplication(sys.argv)
     w = MainWindow(queue_for_analyze, return_queue)
