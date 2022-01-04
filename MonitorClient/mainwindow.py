@@ -60,6 +60,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__password = "profile"
         self.blackberry = Blackberry(parent=self)
         self.blueberry = Blueberry(queue_for_analyze=self.queue_for_analyze, return_queue=self.return_queue, parent=self)
+        self.setup = SetupWindow(parent=self)
         
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
@@ -237,32 +238,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.parameter_signal.emit(CAMERA_GAIN, 100)
         self.parameter_signal.emit(CAMERA_EXPOSURE_TIME, 500)
         self.blackberry.initialize()
-        setup = SetupWindow(self)
+        if self.camera_connected or self.controller_connected or self.calibrated:
+            reset = False
+        else:
+            reset = True
+        if self.setup.reset_all: 
+            reset = True
+        
+        self.setup.initialize_parameter(reset)
+        self.setup.show()
+        #setup = SetupWindow(self, reset)
         self.dialog = True
-        r = setup.return_para()
+        r = self.setup.return_para()
         if r:
-            if setup.camera_connected:
+            if self.setup.camera_connected:
                 self.camera_connected = True
                 self.labelCameraPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
-            if setup.controller_connected:
+            if self.setup.controller_connected:
                 self.controller_connected = True
                 self.labelControllerPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
-            if setup.calibrated:
+            if self.setup.calibrated:
                 self.calibrated = True
                 self.labelCalibrationPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
                 self.blueberry.do_transformation = True
-                self.blueberry.transform_points = setup.original_points
-                self.blueberry.destination_points = setup.destination_points
-                self.blueberry.pixel_per_mm = setup.pixel_per_mm
-                print(setup.pixel_per_mm)
-                self.blueberry.rotate_angle = float(setup.lineRotationAngle.text())
+                self.blueberry.transform_points = self.setup.original_points
+                self.blueberry.destination_points = self.setup.destination_points
+                self.blueberry.pixel_per_mm = self.setup.pixel_per_mm
+                self.blueberry.rotate_angle = float(self.setup.lineRotationAngle.text())
 
-            self.blueberry.gain = setup.gain
-            self.blueberry.exposure_time = setup.exposure_time
-            self.blueberry.ROI = setup.ROI
-            self.blueberry.filter_code = setup.filter_code
-            self.blueberry.filter_para = setup.filter_para
-            self.blueberry.calibration_angle = setup.calibration_angle
+            self.blueberry.gain = self.setup.gain
+            self.blueberry.exposure_time = self.setup.exposure_time
+            self.blueberry.ROI = self.setup.ROI
+            self.blueberry.filter_code = self.setup.filter_code
+            self.blueberry.filter_para = self.setup.filter_para
+            self.blueberry.calibration_angle = self.setup.calibration_angle
 
             if self.blueberry.connected:
                 self.blueberry.working = True
@@ -272,7 +281,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.blackberry.working = True
                 self.blackberry.start()
                 self.blackberry.setPriority(QThread.IdlePriority)
-
 
         self.dialog = False
 

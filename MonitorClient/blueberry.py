@@ -117,7 +117,7 @@ class Blueberry(QThread):
             try:
                 img_resp = cv2.VideoCapture(self.url)
                 if not img_resp.isOpened():
-                    message = "ERROR Connected camera won't be opened"
+                    message = "ERROR Camera won't be opened"
                     self.connected = False
                 else:
                     message = 'INFO Connection successful'
