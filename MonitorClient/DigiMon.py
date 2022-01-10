@@ -1,5 +1,5 @@
 import os, sys
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Lock
 
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
@@ -10,6 +10,8 @@ sys.path.append(BASE_PATH)
 
 from mainwindow import *
 from utilities import analyze_image
+
+mutex = Lock()
 
 if __name__ == '__main__':
     #app = pg.mkQApp()

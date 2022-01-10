@@ -27,9 +27,11 @@ from PySide6.QtCharts import *
 
 import pyqtgraph as pg
 
+
 from logger import LogStringHandler
 from variables import *
 import utilities as ut
+from DigiMon import mutex
 
 class Blueberry(QThread):
     watch_signal = Signal(bool)
@@ -205,7 +207,7 @@ class Blueberry(QThread):
                         retval, image = img_resp.read()
                         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                         self.show_screen(image)
-                        #self.msleep(int((1.0/self.frame)*1000))
+                        self.msleep(int((1.0/self.frame)*1000))
                     self.take_data_from_queue()
 
             except:
@@ -438,6 +440,11 @@ class Blueberry(QThread):
         elif self.idx == CAMERA_EXPOSURE_TIME:
             self.exposure_time = round(value)
         elif self.idx == CAMERA_FPS:
+            if self.frame != value:
+                mutex.acquire()
+                while not self.queue_for_analyze.empty():
+                    self.queue_for_analyze.get()
+                mutex.release()
             self.frame = int(value)
         elif self.idx == CAMERA_REPEAT:
             self.repeat = value

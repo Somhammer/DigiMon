@@ -113,6 +113,7 @@ def analyze_image(queue_for_analyze, return_queue):
                 if intensity_line[1] == -1:
                     intensity_line[1] = round(len(ybin) / 2)
             
+                print(intensity_line)
                 xhist, yhist = grayimage[intensity_line[0],:], grayimage[:,intensity_line[1]]
 
             xhist_percent = np.asarray(xhist)/max(xhist) * 100

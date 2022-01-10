@@ -404,7 +404,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @Slot(int, np.ndarray)
     def update_screen(self, target, graphics, additional_curves=None):
         gara_pen = pg.mkPen(color=(255,255,255), width=0)
-
         if target == PICTURE_SCREEN:
             self.last_picture = graphics
             if len(graphics.shape) == 3:
@@ -427,6 +426,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             painter.end()
             self.labelCamera.setPixmap(pixmap)
         elif any(target == i for i in [LIVE_XPROFILE_SCREEN, LIVE_YPROFILE_SCREEN]):
+            #image.setTransform(QTransform().scale(scale_x/2.0, scale_y/2.0).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
             if target == LIVE_XPROFILE_SCREEN:
                 curve = self.liveXCurve
             else:
@@ -435,14 +435,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             y1 = []
             for value in graphics:
                 if target == LIVE_XPROFILE_SCREEN:
-                    x1.append(value[0])
+                    x1.append(value[0]/self.blueberry.pixel_per_mm[0])
                 else:
-                    x1.append(-value[0])
+                    x1.append(-value[0]/self.blueberry.pixel_per_mm[1])
                 y1.append(value[1])
             if target == LIVE_XPROFILE_SCREEN:
                 curve.setData(x1, y1)
+                #self.plotLiveX.setXRange(min(x1)+2, max(x1)-2)
+                self.plotLiveX.setLimits(xMin=min(x1), xMax=max(x1))
+                #axis = self.plotLiveX.getAxis('bottom')
             else:
                 curve.setData(y1, x1)
+                self.plotLiveY.setLimits(yMin=min(x1), yMax=max(x1))
+                #self.plotLiveY.setYRange(min(x1), max(x1))
+
             #plot.setXRange(min(x1),max(x1))
             #plot.setYRange(min(y1), max(y1)+5)
 
@@ -472,7 +478,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             image.setImage(np.array(graphics))
             scale_x = 1.0/self.blueberry.pixel_per_mm[0]
             scale_y = 1.0/self.blueberry.pixel_per_mm[1]
-            image.setTransform(QTransform().scale(scale_x, scale_y).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
+            image.setTransform(QTransform().scale(scale_x/2.0, scale_y/2.0).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
 
             self.plotProfile.addItem(image)
             txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[2]:.2f}) mm  Size: ({additional_curves[1]:.2f}, {additional_curves[3]:.2f}) mm"
@@ -521,12 +527,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @Slot(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
     def save_pretty_plot(self, transformed_image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline):
-        transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        #transformed_image = cv2.rotate(transformed_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
         mm_per_pixel = [1.0/self.blueberry.pixel_per_mm[0], 1.0/self.blueberry.pixel_per_mm[1]]
         #transformed_image = cv2.resize(transformed_image, dsize=(400,400), interpolation=cv2.INTER_LINEAR)
         gridspec = GridSpec(nrows=2, ncols=2, width_ratios=[4,1], height_ratios=[1,4], wspace=0.025, hspace=0.025)
 
-        plt.rcParams['figure.figsize'] = (4.687, 4.687)
+        #plt.rcParams['figure.figsize'] = (4.687, 4.687)
+        plt.rcParams['figure.figsize'] = (6, 6)
 
         plt.subplot(gridspec[1,0])
         plt.tick_params(axis='both', direction='in')

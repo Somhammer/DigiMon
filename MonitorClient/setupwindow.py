@@ -47,7 +47,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         #self.show()
 
     def keyPressEvent(self, event):
-        if self.tabWidget.currentIndex() == 1:
+        if self.tabWidget.currentIndex() == 2:
             if event.key() == Qt.Key_Control:
                 self.sliderGain.setSingleStep(10)
                 self.sliderExposureTime.setSingleStep(10)
@@ -63,7 +63,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.sliderWidth.setSingleStep(100)
                 self.sliderHeight.setSingleStep(100)
                 self.draw_square = True
-        elif self.tabWidget.currentIndex() == 2:
+        elif self.tabWidget.currentIndex() == 1:
             if event.modifiers() & Qt.ControlModifier:
                 if any(i == event.key() for i in [Qt.Key_Right, Qt.Key_Left, Qt.Key_Up, Qt.Key_Down]):
                     self.move_circle(event.key())
@@ -128,6 +128,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.sliderY0.setValue(self.ROI[0][1])
             self.sliderWidth.setValue(self.ROI[1][0])
             self.sliderHeight.setValue(self.ROI[1][1])
+            if not self.ROI == [[0,0], [0,0]]:
+                self.select_ROI = True
+            else:
+                self.select_ROI = False
             if self.filter_code is not None:
                 self.comboFilter.setCurrentIndex(self.filter_code - 60000 + 1)
                 self.load_filter_parameters(reset=False)
@@ -268,6 +272,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         perspective_para = {"OriginalPoint":self.original_points,
                             "Parameter":para}
 
+        roi_slider = [[self.sliderX0.value(), self.sliderY0.value()], [self.sliderWidth.value(), self.sliderHeight.value()]]
 
         fout = open(fname, 'w')
         fout.write(textwrap.dedent(f"""\
@@ -279,7 +284,8 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             ControllerPort: {self.lineControllerIP5.text()}
             Gain: {self.gain}
             ExposureTime: {self.exposure_time}
-            ROI: {str(self.ROI)}            
+            ROI: {str(self.ROI)}
+            ROISlider: {str(roi_slider)}
             FilterType: "{self.comboFilter.currentText()}"
             FilterParameter: {str(self.filter_para)}
             CalibrationImage: "{str(self.calibration_image_name)}"
@@ -323,11 +329,6 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.exposure_time = int(cfg['ExposureTime'])
                 self.sliderExposureTime.setValue(self.exposure_time)
 
-                self.ROI = cfg['ROI']
-                self.sliderX0.setValue(self.ROI[0][0])
-                self.sliderY0.setValue(self.ROI[0][1])
-                self.sliderWidth.setValue(self.ROI[1][0])
-                self.sliderHeight.setValue(self.ROI[1][1])
 
                 for idx in range(self.comboFilter.count()):
                     if self.comboFilter.itemText(idx) == cfg['FilterType']:
@@ -360,8 +361,16 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                     self.lineQuad3y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point3'][1]))
                     self.lineQuad4y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point4'][1]))
 
-                self.take_a_picture()
                 self.load_calibrated_image()
+                self.take_a_picture()
+
+                roi_slider = cfg['ROISlider']
+                self.sliderX0.setValue(roi_slider[0][0])
+                self.sliderY0.setValue(roi_slider[0][1])
+                self.sliderWidth.setValue(roi_slider[1][0])
+                self.sliderHeight.setValue(roi_slider[1][1])
+                self.ROI = cfg['ROI']
+                self.apply_ROI()
 
     ### Methods for Connection
     def set_sdk(self):
@@ -469,7 +478,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.captured_image = self.parent.blueberry.take_a_picture(True)
             if self.captured_image_aratio is None:
                 self.captured_image_aratio = float(self.captured_image.shape[1]) / float(self.captured_image.shape[0])
-
+            
             self.draw_image(self.captured_image, self.labelImage, self.captured_image_screen_size, self.captured_image_aratio)
         else:
             self.calibration_image = self.parent.blueberry.take_a_picture(True)
@@ -480,20 +489,20 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.draw_image(self.calibration_image, self.labelOrigin, self.calibration_image_screen_size, self.calibration_image_aratio, image_processing=False)
 
     def draw_image(self, image, label, screen_size, aspect_ratio, image_processing=True):
-        print(self.filter_code, self.filter_para)
         image_copy = copy.deepcopy(image)
         if image_processing:
             if self.calibrated:
                 image_copy = ut.transform_image(image_copy, self.original_points, self.destination_points)
             image_copy = ut.filter_image(image_copy, self.filter_code, self.filter_para)
             image_copy = ut.slice_image(image_copy, self.ROI)
-
-        if aspect_ratio > 1:
-            dsize = (screen_size[0], round(screen_size[0] / aspect_ratio))
-        elif aspect_ratio < 1:
-            dsize = (round(screen_size[1] * aspect_ratio), screen_size[1])
-        else:
             dsize = (screen_size[0], screen_size[1])
+        else:
+            if aspect_ratio > 1:
+                dsize = (screen_size[0], round(screen_size[0] / aspect_ratio))
+            elif aspect_ratio < 1:
+                dsize = (round(screen_size[1] * aspect_ratio), screen_size[1])
+            else:
+                dsize = (screen_size[0], screen_size[1])
 
         height, width = image_copy.shape[0], image_copy.shape[1]
 
@@ -501,6 +510,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             dsize = (screen_size[0], screen_size[1])
 
         resized_image = cv2.resize(image_copy, dsize=dsize, interpolation=cv2.INTER_LINEAR)
+        self.image_for_ROI = copy.deepcopy(resized_image)
 
         if len(resized_image.shape) == 3:
             height, width, channel = resized_image.shape
@@ -513,13 +523,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         label.resize(width, height)
         label.setPixmap(pixmap)
-        if image_processing:
-            self.image_for_ROI = copy.deepcopy(resized_image)
 
     def draw_rectangle(self):
         if self.select_ROI or self.image_for_ROI is None: return
         resized_image = copy.deepcopy(self.image_for_ROI)
-
         
         if len(resized_image.shape) == 3:
             height, width, channel = resized_image.shape
@@ -738,7 +745,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
             
         base_path = os.path.abspath(os.path.dirname(__file__))
-        self.calibration_image_name = os.path.join(base_path, 'setup', f"Calibration_{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png")
+        self.calibration_image_name = os.path.join(base_path, 'setup', f"Calibration_{datetime.datetime.today().strftime('%H-%M-%S_%f')}.png").replace('\\', '/')
         cv2.imwrite(self.calibration_image_name, self.calibration_image)
 
     def set_rotation_angle(self, up=True):
@@ -841,15 +848,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 [round(half_width + w), round(half_height - h)],
                 [round(half_width + w), round(half_height + h)]
             ]
-            #w = int(sum([math.sqrt((upper_left[0] - upper_right[0])**2 + (upper_left[1] - upper_right[1])**2), math.sqrt((lower_left[0] - lower_right[0])**2 + (lower_left[1] - lower_right[1])**2)])/2)
-            #h = int(sum([math.sqrt((upper_left[0] - lower_left[0])**2 + (upper_left[1] - lower_left[0])**2), math.sqrt((upper_right[0] - lower_right[0])**2 + (upper_right[1] - lower_right[0])**2)])/2)
 
-            #self.destination_points = [
-                #[round(half_width - w/2), round(half_height - h/2)],
-                #[round(half_width - w/2), round(half_height + h/2)],
-                #[round(half_width + w/2), round(half_height - h/2)],
-                #[round(half_width + w/2), round(half_height + h/2)]
-            #]
             self.pixel_per_mm = [float(self.linePixelPerMM_x.text()), float(self.linePixelPerMM_y.text())]
         else:
             x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad2x.text()), float(self.lineQuad4y.text())
@@ -863,6 +862,12 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 [half_width - abs(float(self.lineQuad3x.text()))*self.pixel_per_mm[0], half_height + abs(float(self.lineQuad3y.text()))*self.pixel_per_mm[1]],
                 [half_width + abs(float(self.lineQuad1x.text()))*self.pixel_per_mm[0], half_height - abs(float(self.lineQuad1y.text()))*self.pixel_per_mm[1]],
                 [half_width + abs(float(self.lineQuad4x.text()))*self.pixel_per_mm[0], half_height + abs(float(self.lineQuad4y.text()))*self.pixel_per_mm[1]]
+            ]
+
+            x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad3x.text()), float(self.lineQuad3y.text())
+            self.pixel_per_mm = [
+                abs(self.destination_points[2][0] - self.destination_points[1][0])/abs(x2 - x1),
+                abs(self.destination_points[2][1] - self.destination_points[1][1])/abs(y2 - y1)
             ]
         self.transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
         self.calibration_angle = float(self.lineRotationAngle.text())

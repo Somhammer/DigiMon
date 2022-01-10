@@ -79,6 +79,7 @@ class Ui_SetupWindow(object):
         sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.tabWidget.sizePolicy().hasHeightForWidth())
         self.tabWidget.setSizePolicy(sizePolicy2)
+        self.tabWidget.setFocusPolicy(Qt.TabFocus)
         self.tabConnection = QWidget()
         self.tabConnection.setObjectName(u"tabConnection")
         self.groupCameraConnection = QGroupBox(self.tabConnection)
@@ -996,7 +997,7 @@ class Ui_SetupWindow(object):
 
         self.retranslateUi(SetupWindow)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         self.tabWidget_2.setCurrentIndex(1)
 
 

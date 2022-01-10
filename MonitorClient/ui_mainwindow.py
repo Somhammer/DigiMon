@@ -591,7 +591,7 @@ class Ui_MainWindow(object):
         self.labelRepeatRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
         self.labelFrameRate.setText(QCoreApplication.translate("MainWindow", u"FPS", None))
         self.lineFrameRate.setText(QCoreApplication.translate("MainWindow", u"30", None))
-        self.labelFrameRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 20)", None))
+        self.labelFrameRange.setText(QCoreApplication.translate("MainWindow", u"(1 - 30)", None))
         self.labelRotation.setText(QCoreApplication.translate("MainWindow", u"Rotation", None))
         self.pushRotateLeft.setText("")
         self.pushRotateRight.setText("")
