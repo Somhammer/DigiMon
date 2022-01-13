@@ -374,8 +374,6 @@ class Blueberry(QThread):
                 image = None
             self.camera.StopGrabbing()
 
-        image = cv2.imread("C:/Users/ash04/Desktop/Work/DigiMon/MonitorClient/setup/Test3.png")
-
         if setup:
             return image
 
@@ -403,7 +401,6 @@ class Blueberry(QThread):
         if not self.connected: return
         if not self.working: return
 
-        image = cv2.imread("C:/Users/ash04/Desktop/Work/DigiMon/MonitorClient/setup/Test3.png")
         self.original_image = image.copy()
         self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
         image = ut.filter_image(image, self.filter_code, self.filter_para)
