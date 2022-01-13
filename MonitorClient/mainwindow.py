@@ -323,9 +323,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.labelCamera.left: return
         self.intensity_line = [self.labelCamera.x, self.labelCamera.y]
         if self.labelCamera.x_end is not None:
-            self.intensity_line[0] = self.labelCamera.x_end
+            if self.labelCamera.x_end < self.labelCamera.width():
+                self.intensity_line[0] = self.labelCamera.x_end
+            else:
+                self.intensity_line[0] = self.labelCamera.width() - 1
         if self.labelCamera.y_end is not None:
-            self.intensity_line[1] = self.labelCamera.y_end
+            if self.labelCamera.y_end < self.labelCamera.height():
+                self.intensity_line[1] = self.labelCamera.y_end
+            else:
+                self.intensity_line[1] = self.labelCamera.height() - 1
         self.blueberry.intensity_line = self.intensity_line
 
     def resizeEvent(self, event):
@@ -413,7 +419,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 height, width = graphics.shape
                 qImg = QImage(graphics.data, width, height, width, QImage.Format_Grayscale8)
             pixmap = QPixmap.fromImage(qImg)
-            pixmap = pixmap.scaled(self.labelCamera.width(), self.labelCamera.height())
+            #pixmap = pixmap.scaled(self.labelCamera.width(), self.labelCamera.height())
 
             painter = QPainter(pixmap)
             painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
@@ -435,9 +441,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             y1 = []
             for value in graphics:
                 if target == LIVE_XPROFILE_SCREEN:
-                    x1.append(value[0]/self.blueberry.pixel_per_mm[0])
+                    #x1.append(value[0]/self.blueberry.pixel_per_mm[0])
+                    x1.append(value[0])
                 else:
-                    x1.append(-value[0]/self.blueberry.pixel_per_mm[1])
+                    x1.append(-value[0])
                 y1.append(value[1])
             if target == LIVE_XPROFILE_SCREEN:
                 curve.setData(x1, y1)
@@ -478,7 +485,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             image.setImage(np.array(graphics))
             scale_x = 1.0/self.blueberry.pixel_per_mm[0]
             scale_y = 1.0/self.blueberry.pixel_per_mm[1]
-            image.setTransform(QTransform().scale(scale_x/2.0, scale_y/2.0).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
+            image.setTransform(QTransform().scale(scale_x, scale_y).translate(-graphics.shape[0]/2.0,-graphics.shape[1]/2.0))
 
             self.plotProfile.addItem(image)
             txt_pos = f"Center: ({additional_curves[0]:.2f}, {additional_curves[2]:.2f}) mm  Size: ({additional_curves[1]:.2f}, {additional_curves[3]:.2f}) mm"

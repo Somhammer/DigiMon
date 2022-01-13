@@ -65,6 +65,7 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 self.draw_square = True
         elif self.tabWidget.currentIndex() == 1:
             if event.modifiers() & Qt.ControlModifier:
+                self.labelOrigin.setFocus()
                 if any(i == event.key() for i in [Qt.Key_Right, Qt.Key_Left, Qt.Key_Up, Qt.Key_Down]):
                     self.move_circle(event.key())
 

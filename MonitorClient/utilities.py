@@ -82,21 +82,26 @@ def analyze_image(queue_for_analyze, return_queue):
             else:
                 grayimage = image
 
-            if not shot:
-                grayimage = cv2.resize(grayimage, dsize=(resized_pixel[1], resized_pixel[0]), interpolation=cv2.INTER_LINEAR)
-            
             nypixel, nxpixel = grayimage.shape
 
-            total_x = original_pixel[0] / pixel_per_mm[0]
-            total_y = original_pixel[1] / pixel_per_mm[1]
+            total_x = nxpixel / pixel_per_mm[0]
+            total_y = nypixel / pixel_per_mm[1]
             xmin = -round(total_x / 2.0)
             ymin = -round(total_y / 2.0)
+
+            if not shot:
+                grayimage = cv2.resize(grayimage, dsize=(resized_pixel[0], resized_pixel[1]), interpolation=cv2.INTER_LINEAR)
+            
+            nypixel, nxpixel = grayimage.shape
             if shot:
                 xbin = [xmin + float(i) * (1.0/pixel_per_mm[0]) for i in range(nxpixel)]
                 ybin = [ymin + float(i) * (1.0/pixel_per_mm[1]) for i in range(nypixel)]
             else:
-                xbin = [xmin + float(i) * (original_pixel[0]/(resized_pixel[0]*pixel_per_mm[0])) for i in range(nxpixel)]
-                ybin = [ymin + float(i) * (original_pixel[1]/(resized_pixel[1]*pixel_per_mm[1])) for i in range(nypixel)]
+                xinterval = abs(xmin) * 2 / nxpixel
+                yinterval = abs(ymin) * 2 / nypixel
+                
+                xbin = [xmin + xinterval * float(i) for i in range(nxpixel)]
+                ybin = [ymin + yinterval * float(i) for i in range(nypixel)]
 
             xhist, yhist = [], []
             if shot:
@@ -108,16 +113,18 @@ def analyze_image(queue_for_analyze, return_queue):
                         xhist[xidx] += grayimage[yidx][xidx]
                         yhist[yidx] += grayimage[yidx][xidx]
             else:
-                if intensity_line[0] == -1:
-                    intensity_line[0] = round(len(xbin) / 2)
-                if intensity_line[1] == -1:
-                    intensity_line[1] = round(len(ybin) / 2)
-            
-                print(intensity_line)
-                xhist, yhist = grayimage[intensity_line[0],:], grayimage[:,intensity_line[1]]
+                if intensity_line[0] == -1: intensity_line[0] = round(nxpixel / 2) - 1
+                if intensity_line[1] == -1: intensity_line[1] = round(nypixel / 2) - 1
+                
+                yhist, xhist = grayimage[:,intensity_line[0]], grayimage[intensity_line[1],:]
 
-            xhist_percent = np.asarray(xhist)/max(xhist) * 100
-            yhist_percent = np.asarray(yhist)/max(yhist) * 100
+            max_intensity = np.amax(grayimage)
+            if max_intensity > 0:
+                xhist_percent = np.asarray(xhist)/max_intensity * 100
+                yhist_percent = np.asarray(yhist)/max_intensity * 100
+            else:
+                xhist_percent = np.asarray(xhist)*0
+                yhist_percent = np.asarray(yhist)*0
 
             xmax, ymax = np.argmax(xhist_percent), np.argmax(yhist_percent)
 
