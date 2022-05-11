@@ -12,6 +12,7 @@ class DigiLabel(QLabel):
         self.x = None
         self.y = None
         self.left = None
+        self.ctrdclick = False
 
         self.x_end = None
         self.y_end = None

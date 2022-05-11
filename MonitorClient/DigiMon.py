@@ -1,3 +1,14 @@
+# -------------------------------------------------------
+# DigiMon
+# Author: Seohyeon An
+# Date: 2022-04-21
+#
+# This file is the main function.
+# -------------------------------------------------------
+
+# coding: UTF-8
+
+import multiprocessing
 import os, sys
 from multiprocessing import Process, Queue, Lock
 
@@ -8,14 +19,22 @@ from PySide6.QtGui import *
 BASE_PATH = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(BASE_PATH)
 
+os.environ['EPICS_CA_AUTO_ADDR_LIST'] = 'NO'
+
 from mainwindow import *
-from utilities import analyze_image
+from image_queue import stream_image, analyze_image
+from variables import Parameters
 
 mutex = Lock()
+para = Parameters()
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     #app = pg.mkQApp()
-    queue_for_analyze = Queue()
+    stream_queue = Queue()
+    # Queue for Image Stream
+    # Element: Image array
+    analysis_queue = Queue()
     # Queue for analyze
     # Element type: List
     # Element[0] = Image array
@@ -40,8 +59,11 @@ if __name__ == '__main__':
     # Element[7, 8] = Fitting curve for each axis
 
     app = QApplication(sys.argv)
-    w = MainWindow(queue_for_analyze, return_queue)
-    proc = Process(target=analyze_image, args=(queue_for_analyze, return_queue), daemon=True)
-    proc.start()
+    w = MainWindow(para, stream_queue, analysis_queue, return_queue)
+
+    stream_proc = Process(target=stream_image, args=(stream_queue, return_queue), daemon=True)
+    analysis_proc = Process(target=analyze_image, args=(analysis_queue, return_queue), daemon=True)
+    stream_proc.start()
+    analysis_proc.start()
 
     sys.exit(app.exec())

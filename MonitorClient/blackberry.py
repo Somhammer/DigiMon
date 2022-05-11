@@ -1,3 +1,14 @@
+# -------------------------------------------------------
+# Blackberry
+# Author: Seohyeon An
+# Date: 2022-04-21
+#
+# This class controls the network camera.
+#   Functions
+#   1. It connects the client and the network camera.
+#   2. It captures images and sends them to stream_queue or analyze_queue.
+# -------------------------------------------------------
+
 import os, sys
 import time
 import asyncio
@@ -13,14 +24,13 @@ class Blackberry(QThread):
         locals()[f'{PV_NAME_RANK1.lower()}{i}_status'] = None
 
     status_signal = Signal(str)
-    def __init__(self, parent):
+    def __init__(self, para, main):
         super().__init__()
-        self.parent = parent
+        self.para = para
+        self.main = main
         self.name = "Profile Monitor Controller"
 
         self.working = False
-        self.connected = False
-        self.monitor = None
         self.pvs = {}
         self.context = None
         self.request = None
@@ -28,56 +38,56 @@ class Blackberry(QThread):
         self.previous_request = None
         self.request = None
 
-        self.status_signal.connect(self.parent.actuator_status)
+        self.status_signal.connect(self.main.actuator_status)
 
-    def initialize(self):
-        pass
-
-    def connection(self, address=RPI_ADDR):
-        if self.connected: return
+    def connection_device(self, address=RPI_ADDR):
+        if self.para.ctl_conn: return
         ip = address.split(":")[0]
-        #os.environ['EPICS_CA_ADDR_LIST'] = str(ip)
-        #os.environ['EPICS_CA_AUTO_ADDR_LIST'] = 'NO'
+        os.environ['EPICS_CA_ADDR_LIST'] = str(ip)
+        os.environ['EPICS_CA_AUTO_ADDR_LIST'] = 'NO'
 
         try:
             self.context = Context()
             for i in range(NUMBER_OF_MONITORS):
-                self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:REQUEST')[0]
-                self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:STATUS')[0]
+                if f'{PV_NAME_RANK1.lower()}{i}' == self.para.monitor_id.lower():
+                    self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:REQUEST')[0]
+                    self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:STATUS')[0]
 
-            time.sleep(2)
+                    time.sleep(2)
+
+                    self.pvs['request'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request']
+                    self.pvs['status'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status']
+        
             message = f"INFO EPICS server is connected."
-            self.connected = True
-            if self.pvs == {}:
-                self.set_monitor(self.monitor)
+            self.para.ctl_conn = True
+
         except:
             message = "ERROR Connection is failed."
-            self.connected = False
+            self.para.ctl_conn = False
         finally:
             return message
 
+    def disconnect_device(self):
+        self.pvs = {}
+
     async def run(self):
-        if any(i == self.request for i in [REQUEST_GO_UP, REQUEST_GO_DOWN]) and self.request != self.previous_request:
-            self.pvs['request'].write(self.request)
-            self.previous_request = self.request
+        if self.para.monitor_id != '':
+            if any(i == self.request for i in [ACTUATOR_REQUEST_GO_UP, ACTUATOR_REQUEST_GO_DOWN]) and self.request != self.previous_request:
+                self.pvs['request'].write(self.request)                
+                t = 0
+                while t <= 6:
+                    self.send_status()
+                    t += 2
+                    time.sleep(2)
+                self.previous_request = self.request
 
     def stop(self):
         self.working = False
-        #self.sleep(1)
         self.quit()
         self.wait(2000)
 
-    def set_monitor(self, monitor):
-        self.monitor = monitor
-        if self.connected:
-            self.pvs = {}
-            for i in range(NUMBER_OF_MONITORS):
-                if f'{PV_NAME_RANK1.lower()}{i}' == monitor.lower():
-                    self.pvs['request'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request']
-                    self.pvs['status'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status']
-
     def send_status(self):
-        self.pvs['request'].write(REQUEST_STATUS)
+        self.pvs['request'].write(ACTUATOR_REQUEST_STATUS)
         status = self.pvs['status'].read().data[0]
         message = ''
         if status == ACTUATOR_UP:

@@ -1,3 +1,14 @@
+# -------------------------------------------------------
+# Blueberry
+# Author: Seohyeon An
+# Date: 2022-04-21
+#
+# This class controls the network camera.
+#   Functions
+#   1. It connects between the client and the network camera.
+#   2. It captures images and send them to stream_queue or analyze_queue.
+# -------------------------------------------------------
+
 import os, sys
 import time
 import datetime
@@ -6,13 +17,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 import copy
 import cv2
-
-import_vimba = False
-try:
-    from vimba import *
-    import_vimba = True
-except ImportError:
-    import_vimba = False
 
 import_pylon = False
 try:
@@ -27,10 +31,9 @@ from PySide6.QtCharts import *
 
 import pyqtgraph as pg
 
-
 from logger import LogStringHandler
 from variables import *
-import utilities as ut
+import utilities as util
 from DigiMon import mutex
 
 class Blueberry(QThread):
@@ -41,17 +44,22 @@ class Blueberry(QThread):
     save_signal = Signal(str)
     plot_signal = Signal(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
 
-    def __init__(self, queue_for_analyze, return_queue, parent=None):
+    def __init__(self, para, main, stream_queue, analysis_queue, return_queue):
         super().__init__()
         self.name = "Network Camera"
-        self.queue_for_analyze = queue_for_analyze
-        self.return_queue = return_queue
-        self.parent = parent
 
-        self.connected = False
+        self.para = para
+        self.main = main
+        self.stream_queue = stream_queue
+        self.analysis_queue = analysis_queue
+        self.return_queue = return_queue
+
+        self.para.cam_conn = False
 
         self.camera = None
-        self.url = None
+        self.prev_time = 0 # Only for OpenCV
+        self.count = 1 # Image Taking
+        self.para.url = None
 
         self.original_image = None
 
@@ -59,7 +67,6 @@ class Blueberry(QThread):
         self.filter_para = {}
 
         self.rotate_angle = 0.0
-        self.do_transformation = False
         self.destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
         self.pixel_per_mm = [1.0, 1.0]
 
@@ -98,56 +105,36 @@ class Blueberry(QThread):
         self.set_action()
 
     def set_action(self):
-        self.watch_signal.connect(self.parent.stopwatch)
-        self.thread_logger_signal.connect(self.parent.receive_log)
-        self.screen_signal.connect(self.parent.update_screen)
-        self.graph_signal.connect(self.parent.update_screen)
-        self.save_signal.connect(self.parent.save_image)
-        self.plot_signal.connect(self.parent.save_pretty_plot)
+        self.watch_signal.connect(self.main.stopwatch)
+        self.thread_logger_signal.connect(self.main.receive_log)
+        self.save_signal.connect(self.main.save_image)
 
-    def connection(self, url):
-        self.url = url
-        if not "OpenCV" in self.sdk:
+    def connect_device(self):
+        if not "OpenCV" in self.para.sdk:
             import re
             p = re.compile(r'[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+')
-            result = p.search(self.url)
+            result = p.search(self.para.url)
             if result is not None:
                 ip_address = result[0]
             else:
                 ip_address = ''
-        if "OpenCV" in self.sdk:
+
+        if "OpenCV" in self.para.sdk:
             try:
-                img_resp = cv2.VideoCapture(self.url)
+                img_resp = cv2.VideoCapture(self.para.url)
                 if not img_resp.isOpened():
-                    message = "ERROR Camera won't be opened"
-                    self.connected = False
+                    message = f"ERROR Camera won't be opened, {self.para.url}"
+                    self.para.cam_conn = False
                 else:
                     message = 'INFO Connection successful'
-                    self.connected = True
+                    self.para.cam_conn = True
             except:
                 message = 'ERROR Connection is failed'
-                self.connected = False
-        elif "Vimba" in self.sdk:
-            if not import_vimba:
-                message = 'ERROR Please install vimba module'
-                self.connected = False
-            else:
-                try:
-                    with Vimba.get_instance() as vimba:
-                        cams = vimba.get_all_cameras()
-                        if len(cams) < 1:
-                            message = f'ERROR There is no connected GigE camera.'
-                            self.connected = False
-                    self.camera = cams[0]
-                    message = f'INFO Connection successful'
-                    self.connected = True
-                except:
-                    message = f'ERROR connection is failed.'
-                    self.connected = False
-        elif "Pylon" in self.sdk:
+                self.para.cam_conn = False
+        elif "Pylon" in self.para.sdk:
             if not import_pylon:
                 message = 'ERROR Please install pylon module'
-                self.connected = False
+                self.para.cam_conn = False
             else:
                 self.converter = pylon.ImageFormatConverter()
                 # Camera: ace acA1600-20gm
@@ -171,259 +158,238 @@ class Blueberry(QThread):
                     #self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
                     if self.camera is None:
                         message = f'ERROR There is no connected GigE camera.'
-                        self.connected = False
-                    self.camera.Open()
-                    #self.camera.AcquisitionMode.SetValue('Continuous')
+                        self.para.cam_conn = False
+                    else:
+                        self.camera.Open()
+                        self.camera.AcquisitionFrameRateEnable.SetValue(True)
 
-                    message = f'INFO Using device, {self.camera.GetDeviceInfo().GetModelName()} at {self.camera.GetDeviceInfo().GetIpAddress()}'
-                    self.connected = True
+                        #self.camera.AcquisitionMode.SetValue('Continuous')
+
+                        message = f'INFO Using device, {self.camera.GetDeviceInfo().GetModelName()} at {self.camera.GetDeviceInfo().GetIpAddress()}'
+                        self.para.cam_conn = True
                 except:
                     if self.camera is None:
                         message = f'ERROR There is no connected GigE camera.'
                     else:
                         message = f'ERROR {self.camera.GetDeviceInfo().GetModelName()} connection is failed.'
-                    self.connected = False
+                    self.para.cam_conn = False
         
         return message
 
+    def disconnect_device(self):
+        pass
+
     def run(self):
-        if "OpenCV" in self.sdk:
+        if self.para.sdk == 'OpenCV':
             try:
-                while self.working:
-                    if not self.connected: continue
-                    if self.idx == CAMERA_EXIT: break
-                    if self.idx == CAMERA_CAPTURE:
-                        self.watch_signal.emit(True)
-                        self.watch_signal.emit(True)
-                        for i in range(1, self.repeat+1):
-                            if self.idx == CAMERA_STOP: break
-                            self.take_a_picture()
-                            self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
-
-                        self.idx = CAMERA_SHOW
-                        self.watch_signal.emit(False)
-                    else:
-                        img_resp = cv2.VideoCapture(self.url)
-                        retval, image = img_resp.read()
-                        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                        self.show_screen(image)
-                        self.msleep(int((1.0/self.frame)*1000))
-                    self.take_data_from_queue()
-
+                img_resp = cv2.VideoCapture(self.para.url)
             except:
-                self.thread_logger_signal.emit('ERROR', f'Connection was broken.')
-                self.connected = False
-
-        elif "Vimba" in self.sdk:
-            while self.working:
-                if not self.connected: continue
-                if self.idx == CAMERA_EXIT: break
-                if self.idx == CAMERA_CAPTURE:
-                    self.watch_signal.emit(True)
-                    for i in range(1, self.repeat+1):
-                        if self.idx == CAMERA_STOP: break
-                        self.take_a_picture()
-                        self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
-                   
-                    self.idx = CAMERA_SHOW
-                    self.watch_signal.emit(False)
-
-                with Vimba.get_instance() as vimba:
-                    cams = vimba.get_all_cameras()
-                    with cams[0] as cam:
-                        try:
-                            minimum, maximum = cam.ExposureTimeAbs.get_range()
-                            if minimum <= self.exposure_time <= maximum:
-                                cam.ExposureAuto.set('Off')
-                                cam.ExposureTimeAbs.set(self.exposure_time)
-                        except(AttributeError, VimbaFeatureError):
-                            pass
-                        try:
-                            cam.GainAuto.set('Off')
-                            cam.GainRaw.set(self.gain)
-                        except(AttributeError, VimbaFeatureError):
-                            pass
-                        try:
-                            frame = cam.get_frame()
-                            frame.convert_pixel_format(PixelFormat.Mono8)
-                            image = frame.as_opencv_image()
-                        except:
-                            image = None
-                        self.show_screen(image)
-                    self.take_data_from_queue()
-                        #self.msleep(int((1.0/self.frame)*1000))
-
-        elif "Pylon" in self.sdk:
-            try:
-                if self.connected:
-                    self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                connect = False
+                for i in range(5):
+                    try:
+                        img_resp = cv2.VideoCapture(self.para.url)
+                        connect = True
+                        break
+                    except:
+                        pass
                 
+                if not connect: 
+                    self.para.cam_conn = False
+                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+
+            gain = self.para.gain
+
+        elif self.para.sdk == 'Pylon':
+            try:
+                self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                
+                if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
                     minimum = self.camera.ExposureTimeRaw.Min
                     maximum = self.camera.ExposureTimeRaw.Max
                     try:
-                        if self.camera.ExposureTimeRaw.GetValue() != self.exposure_time:
-                            if minimum <= self.exposure_time <= maximum:
-                                self.camera.ExposureTimeRaw.SetValue(self.exposure_time)
+                        if minimum <= self.para.exp_time <= maximum:
+                            self.camera.ExposureTimeRaw.SetValue(self.para.exp_time)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera exposure Time: {self.para.exp_time}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting exposure time is failed.'))
+            
+
+                minimum = self.camera.GainRaw.Min
+                maximum = self.camera.GainRaw.Max
+                gain = round(minimum + round((maximum - minimum) * self.para.gain / 100.0))
+                if float(self.camera.GainRaw.GetValue()) != gain:
+                    try:
+                        self.camera.GainRaw.SetValue(gain)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera gain: {gain}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting gain is failed.'))
+
+                if self.camera.AcquisitionFrameRate.GetValue() != self.para.fps:
+                    try:
+                        self.camera.AcquisitionFrameRate.SetValue(self.para.fps)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera frame rate: {self.para.fps}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting frame rate is failed.'))
+            except:
+                connect = False
+                for i in range(5):
+                    try:
+                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                        connect = True
                     except:
                         pass
                 
-                    minimum = self.camera.GainRaw.Min
-                    maximum = self.camera.GainRaw.Max
-                    gain = round(minimum + round((maximum - minimum) * self.gain / 100.0))
-                    try:
-                        if self.camera.GainRaw.GetValue() != gain:
-                            self.camera.GainRaw.SetValue(gain)
-                    except:
-                        pass
+                if not connect:
+                    self.para.cam_conn = False
+                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
 
-                while self.working:
-                    if self.idx == CAMERA_CAPTURE:
-                        self.watch_signal.emit(True)
-                        self.camera.StopGrabbing()
-                        for i in range(1, self.repeat+1):
-                            if self.idx == CAMERA_STOP: break
-                            self.take_a_picture()
-                            self.thread_logger_signal.emit('INFO', str(f"Take a picture {i}"))
+        while self.working:
+            if not self.para.cam_conn or  self.para.cam_request == CAMERA_REQUEST_NOTHING: continue
+            if self.para.cam_request == CAMERA_REQUEST_STREAM and self.count == 1:
+                self.watch_signal.emit(True)
+            
+            if self.para.cam_request == CAMERA_REQUEST_DISCONNECT: break
+            image = None
+            if self.para.sdk == 'OpenCV':
+                retval, image = img_resp.read()
+                current_time = time.time() - self.prev_time
+                if retval and (current_time > 1.0/self.para.fps):
+                    self.prev_time = time.time()
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-                        self.idx = CAMERA_SHOW
-                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+            elif self.para.sdk == 'Pylon':
+                if not self.camera.IsGrabbing(): 
+                    self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                    self.thread_logger_signal.emit('INFO', str(f'Reconnect camera.'))
+
+                if self.camera.IsGrabbing():
+                    result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+                    if result.GrabSucceeded():
+                        image = self.converter.Convert(result)
+                        image = image.GetArray()
+                        result.Release()
+
+            if image is not None:
+                if self.para.cam_request == CAMERA_REQUEST_CAPTURE:
+                    if not os.path.exists(os.path.join(self.outdir, 'image', self.para.current, 'raw')):
+                        os.makedirs(os.path.join(self.outdir, 'image', self.para.current, 'raw'))
+                    if not os.path.exists(os.path.join(self.outdir, 'image', self.para.current, 'analyzed')):
+                        os.makedirs(os.path.join(self.outdir, 'image', self.para.current, 'analyzed'))
+                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{gain}.png"
+                    outname = os.path.join(self.outdir, 'image/raw', imagename)
+                    cv2.imwrite(outname, image)
+                    self.save_signal.emit(outname)
+
+                image = util.filter_image(self.para, image)
+                image = util.transform_image(self.para, image)
+                image = util.slice_image(self.para, image)
+                image = util.rotate_image(self.para, image)
+
+                if self.para.cam_request == CAMERA_REQUEST_STREAM:
+                    self.stream_queue.put([image, self.para])
+                elif self.para.cam_request == CAMERA_REQUEST_CAPTURE:
+                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{gain}.png"
+                    outname = os.path.join(self.outdir, 'image/analyzed', imagename)
+                    cv2.imwrite(outname, image)
+
+                    self.analysis_queue.put([image, self.para])
+
+                    if self.count < self.para.repeat:
+                        self.count += 1
+                    elif self.count == self.para.repeat:
+                        self.count == 1
+                        self.para.cam_request = CAMERA_REQUEST_STREAM
                         self.watch_signal.emit(False)
-                    else:
-                        if self.camera.IsGrabbing():
-                            result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
-                            if result.GrabSucceeded():
-                                image = self.converter.Convert(result)
-                                image = image.GetArray()
-                                result.Release()
-                            else:
-                                image = None
-                        self.show_screen(image)
-                    self.take_data_from_queue()
-                        #self.msleep(int((1.0/self.frame)*1000))
-            except:
-                self.thread_logger_signal.emit('ERROR', f'Connection was broken.')
-                self.connected = False
 
     def stop(self):
         self.working = False
         self.sleep(1)
         self.quit()
 
-    def take_a_picture(self, setup=False):
+    def take_a_picture(self, image):
+        # It is only used for setup.
         image = None
-        if 'OpenCV' in self.sdk:
-            img_resp = cv2.VideoCapture(self.url)
-            retval, image = img_resp.read()
-            if not image is None:
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        elif "Vimba" in self.sdk:
-            with Vimba.get_instance() as vimba:
-                cams = vimba.get_all_cameras()
-                with cams[0] as cam:
-                    if cam.ExposureTimeAbs.get() != self.exposure_time: 
-                        try:
-                            minimum, maximum = cam.ExposureTimeAbs.get_range()
-                            if minimum <= self.exposure_time <= maximum:
-                                cam.ExposureAuto.set('Off')
-                                cam.ExposureTimeAbs.set(self.exposure_time)
-                        except(AttributeError, VimbaFeatureError):
-                            pass
-                        
-                    minimum, maximum = cam.GainRaw.get_range()
-                    gain = minimum + round((maximum - minimum) * self.gain / 100.0)                    
-                    if cam.GainRaw.get() != gain:
-                        try:
-                            cam.GainAuto.set('Off')
-                            cam.GainRaw.set(gain)
-                        except(AttributeError, VimbaFeatureError):
-                            pass
+        if self.para.sdk == 'OpenCV':
+            try:
+                img_resp = cv2.VideoCapture(self.para.url)
+            except:
+                connect = False
+                for i in range(5):
                     try:
-                        frame = cam.get_frame()
-                        frame.convert_pixel_format(PixelFormat.Mono8)
-                        image = frame.as_opencv_image()
+                        img_resp = cv2.VideoCapture(self.para.url)
+                        connect = True
+                        break
                     except:
-                        image = None
-        elif "Pylon" in self.sdk:
-            #self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-            if self.camera.IsGrabbing(): self.camera.StopGrabbin()
-            self.camera.StartGrabbing()
-            minimum = self.camera.ExposureTimeRaw.Min
-            maximum = self.camera.ExposureTimeRaw.Max
-            try:
-                if self.camera.ExposureTimeRaw.GetValue() != self.exposure_time:
-                    if minimum <= self.exposure_time <= maximum:
-                        self.camera.ExposureTimeRaw.SetValue(self.exposure_time)
-            except:
-                pass
+                        pass
                 
-            minimum = self.camera.GainRaw.Min
-            maximum = self.camera.GainRaw.Max
-            gain = round(minimum + round((maximum - minimum) * self.gain / 100.0))
+                if not connect: 
+                    self.para.cam_conn = False
+                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+
+            gain = self.para.gain
+
+            retval, image = img_resp.read()
+            current_time = time.time() - self.prev_time
+            if retval and (current_time > 1.0/self.para.fps):
+                self.prev_time = time.time()
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        elif self.para.sdk == 'Pylon':
             try:
-                if self.camera.GainRaw.GetValue() != gain:
-                    self.camera.GainRaw.SetValue(gain)
+                self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                
+                if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
+                    minimum = self.camera.ExposureTimeRaw.Min
+                    maximum = self.camera.ExposureTimeRaw.Max
+                    try:
+                        if minimum <= self.para.exp_time <= maximum:
+                            self.camera.ExposureTimeRaw.SetValue(self.para.exp_time)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera exposure Time: {self.para.exp_time}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting exposure time is failed.'))
+            
+
+                minimum = self.camera.GainRaw.Min
+                maximum = self.camera.GainRaw.Max
+                gain = round(minimum + round((maximum - minimum) * self.para.gain / 100.0))
+                if float(self.camera.GainRaw.GetValue()) != gain:
+                    try:
+                        self.camera.GainRaw.SetValue(gain)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera gain: {gain}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting gain is failed.'))
+
+                if self.camera.AcquisitionFrameRate.GetValue() != self.para.fps:
+                    try:
+                        self.camera.AcquisitionFrameRate.SetValue(self.para.fps)
+                        self.thread_logger_signal.emit('INFO', str(f"Set camera frame rate: {self.para.fps}"))
+                    except:
+                        self.thread_logger_signal.emit('ERROR', str(f'Setting frame rate is failed.'))
             except:
-                pass
+                connect = False
+                for i in range(5):
+                    try:
+                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                        connect = True
+                    except:
+                        pass
+                
+                if not connect:
+                    self.para.cam_conn = False
+                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
 
-            result = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-            if result.GrabSucceeded():
-                image = self.converter.Convert(result)
-                image = image.GetArray()
-                result.Release()
-            else:
-                image = None
-            self.camera.StopGrabbing()
-
-        if setup:
-            return image
+            if self.camera.IsGrabbing():
+                result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+                if result.GrabSucceeded():
+                    image = self.converter.Convert(result)
+                    image = image.GetArray()
+                    result.Release()
 
         if image is None:
             self.thread_logger_signal.emit('ERROR', 'Taking a picture is failed.')
             return
-
-        self.original_image = image.copy()
-        self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
-        
-        image = ut.filter_image(image, self.filter_code, self.filter_para)
-        image = ut.rotate_image(image, angle=self.calibration_angle)
-        image = ut.transform_image(image, self.transform_points, self.destination_points)
-        image = ut.slice_image(image, self.ROI)
-        image = ut.rotate_image(image, angle=0, quadrant = self.rotation, flip_rl = self.flip_rl, flip_ud = self.flip_ud)
-                        
-        outname = os.path.join(self.outdir, 'image', f"{datetime.datetime.today().strftime('%H-%M-%S_%f')[:-3]}_{self.current}A_Exp{self.exposure_time}_Gain{self.gain}.png")
-        cv2.imwrite(outname, image)
-        self.save_signal.emit(outname)
-
-        element = [image, self.intensity_line, self.pixel_per_mm, self.original_pixel, self.resized_pixel, True]
-        self.queue_for_analyze.put(element)
-            
-    def show_screen(self, image):
-        if not self.connected: return
-        if not self.working: return
-
-        self.original_image = image.copy()
-        self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
-        image = ut.filter_image(image, self.filter_code, self.filter_para)
-        image = ut.rotate_image(image, angle=self.calibration_angle)
-        image = ut.transform_image(image, self.transform_points, self.destination_points)
-        image = ut.slice_image(image, self.ROI)
-        image = ut.rotate_image(image, angle=0, quadrant = self.rotation, flip_rl = self.flip_rl, flip_ud = self.flip_ud)
-        element = [image, self.intensity_line, self.pixel_per_mm, self.original_pixel, self.resized_pixel, False]
-        self.queue_for_analyze.put(element)
-
-    def take_data_from_queue(self):
-        #if not self.return_queue.empty():
-        while not self.return_queue.empty():
-            element = self.return_queue.get()
-            if len(element) == 7:
-                self.screen_signal.emit(PICTURE_SCREEN, element[0])
-                self.graph_signal.emit(LIVE_XPROFILE_SCREEN, list(zip(element[1], element[3])), element[5])
-                self.graph_signal.emit(LIVE_YPROFILE_SCREEN, list(zip(element[2], element[4])), element[6])
-            else:
-                self.graph_signal.emit(PROFILE_SCREEN, element[0], element[5]+element[6])
-                self.graph_signal.emit(XSIZE_SCREEN, list(zip(element[1], element[3])), element[7])
-                self.graph_signal.emit(YSIZE_SCREEN, list(zip(element[2], element[4])), element[8])
-                self.plot_signal.emit(element[0], element[1], element[2], element[3], element[4], element[7], element[8])
+        else:
+            return image
 
     @Slot(int, list)
     def receive_signal_from_setup(self, idx, value):
@@ -436,14 +402,14 @@ class Blueberry(QThread):
         # OpenCV can not control IP webcam's parameters...
         ### Camera Control
         if self.idx == CAMERA_GAIN:
-            self.gain = float(value)
+            self.parent.self.para.gain = float(value)
         elif self.idx == CAMERA_EXPOSURE_TIME:
             self.exposure_time = round(value)
         elif self.idx == CAMERA_FPS:
             if self.frame != value:
                 mutex.acquire()
-                while not self.queue_for_analyze.empty():
-                    self.queue_for_analyze.get()
+                while not self.analysis_queue.empty():
+                    self.analysis_queue.get()
                 mutex.release()
             self.frame = int(value)
         elif self.idx == CAMERA_REPEAT:
@@ -474,13 +440,11 @@ class Blueberry(QThread):
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        self.save_signal.emit(name)
         self.original_image = image
         self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
 
-        xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = self.analyze_picture(image=image, shot=True)
-        beam_range = xrange + yrange
+        #xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = ut.analyze_picture(image=image, shot=True)
+        #beam_range = xrange + yrange
 
-        self.graph_signal.emit(PROFILE_SCREEN, image, beam_range)
-        self.graph_signal.emit(XSIZE_SCREEN, list(zip(xbin, xhist_percent)), xfitline)
-        self.graph_signal.emit(YSIZE_SCREEN, list(zip(ybin, yhist_percent)), yfitline)
-        self.plot_signal.emit(image, xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline)
+        self.analysis_queue.put([image, self.para])
