@@ -31,9 +31,9 @@ ACTUATOR_ERROR = -1
 ### CAMERA STATUS
 CAMERA_REQUEST_NOTHING = 20000
 CAMERA_REQUEST_STREAM = 20001
-CAMERA_REQUEST_CAPTURE = 20001
-CAMERA_REQUEST_STOP = 20002
-CAMERA_REQUEST_DISCONNECT = 20003
+CAMERA_REQUEST_CAPTURE = 20002
+CAMERA_REQUEST_STOP = 20003
+CAMERA_REQUEST_DISCONNECT = 20004
 
 CAMERA_GAIN = 30001
 CAMERA_FPS = 30002
@@ -91,8 +91,8 @@ class Parameters:
     sdk: str = ''
     cam_request: int = CAMERA_REQUEST_NOTHING
 
-    gain: float = 0.0 #%
-    exp_time: float = 5000 #us
+    gain: int = 0 #%
+    exp_time: int = 5000 #us
     fps: int = 20
     repeat: int = 1
 
@@ -104,7 +104,6 @@ class Parameters:
     cal_target_points: dict = field(default_factory=dict) # {'PointX':[[xpixel, ypixel],[xreal, yreal]]} 
     cal_dest_points: dict = field(default_factory=dict)
     transform_matrix: np.array = field(default_factory=np.array)
-    transformed_image_size: list = field(default_factory=list)
 
     pixel_per_mm: list = field(default_factory=list)
 
@@ -131,19 +130,18 @@ class Parameters:
         self.cal_target_points = {'Point1':[[0,0],[0,0]], 'Point2':[[0,0],[0,0]], 'Point3':[[0,0],[0,0]], 'Point4':[[0,0],[0,0]]}
         self.cal_dest_points = {'Point1':[[0,0],[0,0]], 'Point2':[[0,0],[0,0]], 'Point3':[[0,0],[0,0]], 'Point4':[[0,0],[0,0]]}
         self.transform_matrix = np.array([])
-        self.transformed_image_size = []
         self.pixel_per_mm = [1.0,1.0]
         self.roi = [[0,0],[0,0],[0,0],[0,0]]
         self.filter_para = {}
         self.coordinate_center = [0,0]
 
-    def set_parameter(self, idx, value):
+    def set_parameter(self, idx, value=None):
         if idx == CAMERA_GAIN:
             self.gain = float(value)
         elif idx == CAMERA_EXPOSURE_TIME:
             self.exp_time = round(value)
         elif idx == CAMERA_FPS:
-            self.frame = int(value)
+            self.fps = int(value)
         elif idx == CAMERA_REPEAT:
             self.repeat = value
         elif idx == CAMERA_ROTATION_RIGHT:
@@ -158,3 +156,14 @@ class Parameters:
         elif idx == CAMERA_FLIP_RIGHT_LEFT:
             self.flip_rl += 1
             self.flip_rl = self.flip_rl % 2
+        elif idx == CAMERA_REQUEST_CAPTURE:
+            self.repeat = value
+            self.cam_request = CAMERA_REQUEST_CAPTURE
+        elif idx in [CAMERA_REQUEST_STOP, CAMERA_REQUEST_STREAM]:
+            self.cam_request = idx
+    
+    def is_default(self, para):
+        for key, value in self.__dict__.items():
+            if value == para:
+                return True
+        return False

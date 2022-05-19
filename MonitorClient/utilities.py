@@ -41,20 +41,21 @@ def filter_image(para, image):
     return image
 
 def transform_image(para, image):
-    if not para.calibrated: return
+    if not para.calibrated: return image
     
     if para.calibration_angle > 0.0:
         center = (round(image.shape[1]/2), round(image.shape[0]/2))
-        angle = float(para.angle)
+        angle = float(para.calibration_angle)
         matrix = cv2.getRotationMatrix2D(center, angle, 1)
         image = cv2.warpAffine(image, matrix, (0,0))
 
-    if len(para.cal_target_points) == 0 or len(para.cal_destination_points) == 0: return
+    if para.cal_target_points['Point1'] == para.cal_target_points['Point2'] or para.cal_dest_points['Point1'] == para.cal_dest_points['Point2']: 
+        return image
     
-    transform_matrix = cv2.getPerspectiveTransform(np.float32(para.cal_target_points), np.float32(para.cal_destination_points))
+    #transform_matrix = cv2.getPerspectiveTransform(np.float32(para.cal_target_points), np.float32(para.cal_destination_points))
 
     width, height = image.shape[1], image.shape[0]
-    image = cv2.warpPerspective(image, transform_matrix, (width, height))
+    image = cv2.warpPerspective(image, para.transform_matrix, (width, height))
     
     return image
 
@@ -68,37 +69,6 @@ def slice_image(para, image):
 
     return image
 
+# FIXME
 def remove_white_noise(para, image):
     return image
-
-def generate_transformation_matrix(para, image):
-    if not len(image.shape) == 2: return
-    if para.cal_target_points['Point1'] == para.cal_target_points['Point2']: return
-
-    p1, p2, p3, p4 = para.cal_target_points.values()
-    p1 = np.array(p1)
-    p2 = np.array(p2)
-    p3 = np.array(p3)
-    p4 = np.array(p4)
-
-    avg = (abs(p1 - p2) + abs(p1 - p3) + abs(p1 - p4) + abs(p2 - p3) + abs(p2 - p4) + abs(p3 - p4))/6
-    pixel_per_mm = avg[0] / avg[1]
-    para.pixel_per_mm = pixel_per_mm.tolist()
-
-    coordinate_center = np.array(p1[0]) - np.array(abs(p1[1]) / pixel_per_mm)
-    para.coordinate_center = coordinate_center
-
-    upper_left, lower_left, upper_right, lower_right = np.array([0,0]), np.array([0,0]), np.array([0,0]), np.array([0,0])
-    points = [p1[0], p2[0], p3[0], p4[0]]
-    for point in points:
-        if point[0] < coordinate_center[0] and point[1] < coordinate_center[1]:
-            upper_left = point
-        elif point[0] < coordinate_center[0] and point[1] > coordinate_center[1]:
-            lower_left = point
-        elif point[0] > coordinate_center[0] and point[1] < coordinate_center[1]:
-            upper_right = point
-        else:
-            lower_right = point
-
-    #para.transform_matrix = cv2.getPerspectiveTransform(np.float32(para.original_points), np.float32(para.destination_points))
-

@@ -69,6 +69,7 @@ class Blackberry(QThread):
 
     def disconnect_device(self):
         self.pvs = {}
+        self.para.ctl_conn = False
 
     async def run(self):
         if self.para.monitor_id != '':

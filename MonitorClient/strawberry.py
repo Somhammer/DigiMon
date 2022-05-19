@@ -36,11 +36,19 @@ class Strawberry(QThread):
         self.return_queue = return_queue
         self.working = True
 
+        self.cam_request = self.para.cam_request
+        self.fps = self.para.fps
+
         self.stream_signal.connect(self.main.image_stream)
         self.analysis_signal.connect(self.main.image_analysis)
 
     def run(self):
         while self.working:
+            if self.cam_request != self.para.cam_request:
+                while not self.return_queue.empty():
+                    self.return_queue.get()
+                self.cam_request = self.para.cam_request
+            
             if not self.return_queue.empty():
                 element = self.return_queue.get()
                 target = element.pop(0)
@@ -48,7 +56,7 @@ class Strawberry(QThread):
                     self.stream_signal.emit(element)
                 elif target == ANALYSIS:
                     self.analysis_signal.emit(element)
-
+        
     def stop(self):
         self.working = False
         self.sleep(1)

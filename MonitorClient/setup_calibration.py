@@ -22,9 +22,8 @@ class ExpandedImage(QDialog, Ui_ImageWindow):
         self.flag = False
         self.para = para
         self.image = cv2.imread(image_name)
-        self.imagesize = [self.frameImage.width(), self.frameImage.height()]
-        self.target_points = []
-        self.resized_points = []
+        self.image_size = [self.frameImage.width(), self.frameImage.height()]
+        self.image_points = []
         self.labelImage = DigiLabel(self.labelImage)
         self.gridLayout_2.addWidget(self.labelImage, 0, 0, 1, 1, Qt.AlignHCenter|Qt.AlignVCenter)
         self.labelImage.clicked.connect(self.draw_circle)
@@ -35,7 +34,7 @@ class ExpandedImage(QDialog, Ui_ImageWindow):
         self.flag = True
 
     def draw_image(self):
-        resized_image = cv2.resize(self.image, dsize=self.imagesize, interpolation=cv2.INTER_LINEAR)
+        resized_image = cv2.resize(self.image, dsize=self.image_size, interpolation=cv2.INTER_LINEAR)
         if len(resized_image.shape) == 3:
             height, width, channel = resized_image.shape
             qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
@@ -47,7 +46,7 @@ class ExpandedImage(QDialog, Ui_ImageWindow):
 
         halflength = 100
         painter = QPainter(pixmap)
-        for point in self.resized_points:
+        for point in self.image_points:
             painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
             painter.drawLine(point[0]- halflength, point[1], point[0] + halflength, point[1])
             painter.drawLine(point[0], point[1] - halflength, point[0], point[1] + halflength)
@@ -62,26 +61,26 @@ class ExpandedImage(QDialog, Ui_ImageWindow):
     
     def draw_circle(self):
         if self.labelImage.left:
-            if len(self.resized_points) == 4: return
-            self.resized_points.append([self.labelImage.x, self.labelImage.y])
+            if len(self.image_points) == 4: return
+            self.image_points.append([self.labelImage.x, self.labelImage.y])
         else:
             x,y = 999, 999
             radius = 40
-            for point in self.resized_points:
+            for point in self.image_points:
                 distance = math.sqrt(pow((point[0] - self.labelImage.x),2) + pow((point[1] - self.labelImage.y), 2))
                 if distance < radius:
                     x = point[0]
                     y = point[1]
 
             if x != 999 and y != 999:
-                self.resized_points.remove([x,y])
+                self.image_points.remove([x,y])
 
         self.draw_image()
 
     def move_circle(self, key):
-        if len(self.resized_points) < 1: return
+        if len(self.image_points) < 1: return
 
-        x, y = self.resized_points[-1][0], self.resized_points[-1][1]
+        x, y = self.image_points[-1][0], self.image_points[-1][1]
 
         if key == Qt.Key_Right:
             x = x + 1
@@ -92,14 +91,14 @@ class ExpandedImage(QDialog, Ui_ImageWindow):
         elif key == Qt.Key_Down:
             y = y + 1
 
-        self.resized_points.pop(-1)
-        self.resized_points.append([x, y])
+        self.image_points.pop(-1)
+        self.image_points.append([x, y])
         
         self.draw_image()
 
     def resizeEvent(self, event):
         if self.flag: 
-            self.imagesize = [self.frameImage.width(), self.frameImage.height()]
+            self.image_size = [self.frameImage.width(), self.frameImage.height()]
             self.draw_image()
 
     def keyPressEvent(self, event):
@@ -118,13 +117,15 @@ def open_calibration_image(self):
     
     if fname != '':
         self.calibration_image_name = fname
-        self.original_points = []
-        self.destination_points = []
-        self.resized_points = []
+        self.cal_target_points = []
+        self.cal_dest_points = []
+        self.cal_reduced_target = []
         self.load_calibration_image()
 
 def load_calibration_image(self):
+    if self.calibration_image_name == '': return
     self.calibration_image = cv2.imread(self.calibration_image_name)
+    if self.calibration_image is None: return
     self.calibration_image_backup = self.calibration_image.copy()
     if self.calibration_image_aratio is None:
         self.calibration_image_aratio = float(self.calibration_image.shape[1]) / float(self.calibration_image.shape[0])
@@ -139,10 +140,10 @@ def load_calibration_image(self):
         self.ratio_width = float(self.calibration_image.shape[1] / self.calibration_image_screen_size[0])
         self.ratio_height = float(self.calibration_image.shape[0] / self.calibration_image_screen_size[1])
 
-    if len(self.original_points) > 0:
-        for point in self.original_points:
+    if len(self.cal_real_target) > 0:
+        for point in self.cal_real_target:
             x, y = point[0]/self.ratio_width, point[1]/self.ratio_height
-            self.resized_points.append([round(x), round(y)])
+            self.cal_reduced_target.append([round(x), round(y)])
         
     self.convert_calibration_image()
     self.draw_calibration_image(self.calibration_image)
@@ -171,15 +172,16 @@ def draw_calibration_image(self, image, origin=True):
     #qImg = QImage(resized_image.data, width, height, width*channel, QImage.Format_BGR888)
     #pixmap = QPixmap.fromImage(qImg)
     if origin:
-        # FIXME
-        angle = float(self.lineRotationAngle.text())
-        self.para.rotation = angle
-        image = ut.rotate_image(self.para, image)
+        center = (round(image.shape[1]/2), round(image.shape[0]/2))
+        matrix = cv2.getRotationMatrix2D(center, self.para.calibration_angle, 1)
+        image = cv2.warpAffine(image, matrix, (0,0))
+
         self.draw_image(image, self.labelOrigin, self.calibration_image_screen_size, self.calibration_image_aratio, image_processing=False)
+
         pixmap = self.labelOrigin.pixmap()
         halflength = 100
         painter = QPainter(pixmap)
-        for point in self.resized_points:
+        for point in self.cal_reduced_target:
             painter.setPen(QPen(QColor(90, 94, 99), 2, Qt.SolidLine))
             painter.drawLine(point[0]- halflength, point[1], point[0] + halflength, point[1])
             painter.drawLine(point[0], point[1] - halflength, point[0], point[1] + halflength)
@@ -194,15 +196,15 @@ def draw_calibration_image(self, image, origin=True):
         painter = QPainter(pixmap)
         if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == "Rectangle":
             painter.setPen(QPen(QColor(178, 54, 245), 4, Qt.DashLine))
-            start_point = (self.destination_points[0][0] / self.ratio_width, self.destination_points[0][1] / self.ratio_height)
-            end_point = (self.destination_points[3][0] / self.ratio_width, self.destination_points[3][1] / self.ratio_height)
+            start_point = (self.cal_dest_points[0][0] / self.ratio_width, self.cal_dest_points[0][1] / self.ratio_height)
+            end_point = (self.cal_dest_points[3][0] / self.ratio_width, self.cal_dest_points[3][1] / self.ratio_height)
             width = end_point[0] - start_point[0]
             height = end_point[1] - start_point[1]
             painter.drawRect(start_point[0], start_point[1], width, height)
         else:
             painter.setPen(QPen(QColor(90, 94, 99), 2 , Qt.SolidLine))
             halflength = 100
-            for point in self.destination_points:
+            for point in self.cal_dest_points:
                 x, y = point[0] / self.ratio_width, point[1] / self.ratio_height
                 painter.drawLine(x - halflength, y, x + halflength, y)
                 painter.drawLine(x, y - halflength, x, y + halflength)
@@ -218,92 +220,125 @@ def expand_calibration_image(self):
     self.labelOrigin.ctrdclick = False
     if r:
         ratio = [dialog.image.shape[1]/dialog.labelImage.width(), dialog.image.shape[0]/dialog.labelImage.height()]
-        self.original_points = []
-        self.resized_points = []
-        for ipoint in dialog.resized_points:
+        self.cal_target_points = []
+        self.cal_reduced_target = []
+        for ipoint in dialog.image_points:
             point = [round(ipoint[0]*ratio[0]), round(ipoint[1]*ratio[1])]
-            self.original_points.append(point)
+            self.cal_target_points.append(point)
             point = [round(point[0]/self.ratio_width), round(point[1]/self.ratio_height)]
-            self.resized_points.append(point)
-
-        print(self.original_points, self.resized_points)
+            self.cal_reduced_target.append(point)
         
         self.draw_calibration_image(self.calibration_image)
 
 def convert_calibration_image(self):
-    if len(self.resized_points) != 4: return
+    if len(self.cal_reduced_target) != 4: return
 
-    for point in self.resized_points:
+    for point in self.cal_reduced_target:
         x, y = point[0], point[1]
         x *= self.ratio_width
         y *= self.ratio_height
-        if len(self.original_points) == 4:
-            self.original_points = []
-        self.original_points.append([int(x), int(y)])
+        if len(self.cal_target_points) == 4:
+            self.cal_target_points = []
+        self.cal_target_points.append([int(x), int(y)])
 
     half_width = self.calibration_image.shape[1] / 2
     half_height = self.calibration_image.shape[0] / 2
-
-    upper_left, lower_left, upper_right, lower_right = [0,0], [0,0], [0,0], [0,0]
-    for point in self.original_points:
-        if point[0] < half_width and point[1] < half_height:
-            upper_left = point
-        elif point[0] < half_width and point[1] > half_height:
-            lower_left = point
-        elif point[0] > half_width and point[1] < half_height:
-            upper_right = point
-        else:
-            lower_right = point
-
-    self.original_points = [upper_left, lower_left, upper_right, lower_right]
-
     if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == "Rectangle":
+        upper_left, lower_left, upper_right, lower_right = [0,0], [0,0], [0,0], [0,0]
+        for point in self.cal_target_points:
+            if point[0] < half_width and point[1] < half_height:
+                upper_left = point
+            elif point[0] < half_width and point[1] > half_height:
+                lower_left = point
+            elif point[0] > half_width and point[1] < half_height:
+                upper_right = point
+            else:
+                lower_right = point
+
+        self.cal_target_points = [upper_left, lower_left, upper_right, lower_right]
         w, h = -9999, -9999
-        for coordinate in self.original_points:
+        for coordinate in self.cal_target_points:
             w_tmp = round(abs(half_width - coordinate[0]))
             h_tmp = round(abs(half_height - coordinate[1]))
             if w < w_tmp: w = w_tmp
             if h < h_tmp: h = h_tmp
         
-        self.destination_points = [
+        self.cal_dest_points = [
             [round(half_width - w), round(half_height - h)],
             [round(half_width - w), round(half_height + h)],
             [round(half_width + w), round(half_height - h)],
             [round(half_width + w), round(half_height + h)]
         ]
-
         self.para.pixel_per_mm = [float(self.linePixelPerMM_x.text()), float(self.linePixelPerMM_y.text())]
+        self.cal_real_target = (np.array(self.cal_dest_points) * np.array(self.para.pixel_per_mm)).tolist()
     else:
-        x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad2x.text()), float(self.lineQuad4y.text())
-        self.para.pixel_per_mm = [abs(upper_right[0] - upper_left[0])/abs(x2 - x1), abs(upper_right[1] - lower_right[1])/abs(y2 - y1)]
-
-        self.points = [self.lineQuad1x.text(), self.lineQuad2x.text(), self.lineQuad3x.text(), self.lineQuad4x.text(),
-                        self.lineQuad1y.text(), self.lineQuad2y.text(), self.lineQuad3y.text(), self.lineQuad4y.text()]
-
-        self.destination_points = [
-            [half_width - abs(float(self.lineQuad2x.text()))*self.para.pixel_per_mm[0], half_height - abs(float(self.lineQuad2y.text()))*self.para.pixel_per_mm[1]],
-            [half_width - abs(float(self.lineQuad3x.text()))*self.para.pixel_per_mm[0], half_height + abs(float(self.lineQuad3y.text()))*self.para.pixel_per_mm[1]],
-            [half_width + abs(float(self.lineQuad1x.text()))*self.para.pixel_per_mm[0], half_height - abs(float(self.lineQuad1y.text()))*self.para.pixel_per_mm[1]],
-            [half_width + abs(float(self.lineQuad4x.text()))*self.para.pixel_per_mm[0], half_height + abs(float(self.lineQuad4y.text()))*self.para.pixel_per_mm[1]]
+        self.cal_real_target = [
+            [float(self.lineQuad1x.text()), float(self.lineQuad1y.text())],
+            [float(self.lineQuad2x.text()), float(self.lineQuad2y.text())],
+            [float(self.lineQuad3x.text()), float(self.lineQuad3y.text())],
+            [float(self.lineQuad4x.text()), float(self.lineQuad4y.text())]
         ]
 
-        x1, y1, x2, y2 = float(self.lineQuad1x.text()), float(self.lineQuad1y.text()), float(self.lineQuad3x.text()), float(self.lineQuad3y.text())
-        self.para.pixel_per_mm = [
-            abs(self.destination_points[0][0] - self.destination_points[1][0])/abs(x2 - x1),
-            abs(self.destination_points[2][1] - self.destination_points[1][1])/abs(y2 - y1)
-        ]
-    self.transform_matrix = cv2.getPerspectiveTransform(np.float32(self.original_points), np.float32(self.destination_points))
-    self.calibration_angle = float(self.lineRotationAngle.text())
-    image = ut.rotate_image(self.para, self.calibration_image)
+        tmp = np.array([0.0, 0.0])
+        tmp2 = 0
+        for i in range(len(self.cal_target_points)):
+            if i == 4: continue
+            for j in range(i+1, len(self.cal_target_points)):
+                pixel1 = np.array(self.cal_target_points[i])
+                pixel2 = np.array(self.cal_target_points[j])
+                real1 = np.array(self.cal_real_target[i])
+                real2 = np.array(self.cal_real_target[j])
+                if real1[0] == real2[0] or real1[1] == real2[1]: continue
+                tmp += abs(pixel1 - pixel2) / abs(real1 - real2)
+                tmp2 += 1
 
-    self.transformed_image = cv2.warpPerspective(image, self.transform_matrix, (image.shape[1], image.shape[0]))
+        avg_pixel_per_mm = (tmp / tmp2).tolist()
+
+        self.cal_dest_points = []
+        for i in range(len(self.cal_real_target)):
+            point = self.cal_real_target[i]
+            self.cal_dest_points.append([round(half_width + point[0] * avg_pixel_per_mm[0]), round(half_height - point[1] * avg_pixel_per_mm[1])])
+
+        tmp = np.array([0.0, 0.0])
+        tmp2 = 0
+        for i in range(len(self.cal_dest_points)):
+            if i == 4: continue
+            for j in range(i+1, len(self.cal_dest_points)):
+                pixel1 = np.array(self.cal_dest_points[i])
+                pixel2 = np.array(self.cal_dest_points[j])
+                real1 = np.array(self.cal_real_target[i])
+                real2 = np.array(self.cal_real_target[j])
+                if real1[0] == real2[0] or real1[1] == real2[1]: continue
+                tmp += abs(pixel1 - pixel2) / abs(real1 - real2)
+                tmp2 += 1
+
+        self.para.pixel_per_mm = (tmp / tmp2).tolist()
+
+    self.para.transform_matrix = cv2.getPerspectiveTransform(np.float32(self.cal_target_points), np.float32(self.cal_dest_points))
+
+    image = self.calibration_image
+    center = (round(image.shape[1]/2), round(image.shape[0]/2))
+    matrix = cv2.getRotationMatrix2D(center, self.para.calibration_angle, 1)
+    image = cv2.warpAffine(image, matrix, (0,0))
+
+    self.transformed_image = cv2.warpPerspective(image, self.para.transform_matrix, (image.shape[1], image.shape[0]))
 
     self.draw_calibration_image(self.transformed_image, False)
-    self.calibrated = True
     self.set_checked(self.checkCalibration, True)
-    self.perspective_method = self.tabWidget_2.tabText(self.tabWidget_2.currentIndex())
 
-def set_rotation_angle(self, up=True):
+    self.para.calibrated = True
+    self.para.cal_target_points['Point1'] = [self.cal_target_points[0], self.cal_real_target[0]]
+    self.para.cal_target_points['Point2'] = [self.cal_target_points[1], self.cal_real_target[1]]
+    self.para.cal_target_points['Point3'] = [self.cal_target_points[2], self.cal_real_target[2]]
+    self.para.cal_target_points['Point4'] = [self.cal_target_points[3], self.cal_real_target[3]]
+    self.para.cal_dest_points['Point1'] = [self.cal_dest_points[0], self.cal_real_target[0]]
+    self.para.cal_dest_points['Point2'] = [self.cal_dest_points[1], self.cal_real_target[1]]
+    self.para.cal_dest_points['Point3'] = [self.cal_dest_points[2], self.cal_real_target[2]]
+    self.para.cal_dest_points['Point4'] = [self.cal_dest_points[3], self.cal_real_target[3]]
+
+
+def set_rotation_angle(self, opt=0):
+    #opt 0: pushUp, 1: pushDown, 2: lineEdit
     if self.sliderAngle.value() == 0: unit = 0.01
     elif self.sliderAngle.value() == 1: unit = 0.1
     elif self.sliderAngle.value() == 2: unit = 1
@@ -311,42 +346,40 @@ def set_rotation_angle(self, up=True):
     else: unit = 100
 
     value = float(self.lineRotationAngle.text())
-    if up: value = value + unit
-    else: value = value - unit
-    value = round(value, 2)
+    if opt == 0: value = value + unit
+    elif opt == 1: value = value - unit
+    elif opt == 2: value = value
+    value = round(value % 360.0, 2)
     
-    if value < 0.0: value = 360.0 + value
-    elif value > 360.0: value = value - 360.0
-    if up:
-        self.lineRotationAngle.setText(str(value))
-    else:
-        self.lineRotationAngle.setText(str(value))
+    self.lineRotationAngle.setText(str(value))
+
+    self.para.calibration_angle = value
     self.draw_calibration_image(self.calibration_image)
 
 def draw_circle(self):
     if self.labelOrigin.ctrdclick: return
     self.labelPosition.setText(f"Position: {self.labelOrigin.x}, {self.labelOrigin.y} ({int(self.labelOrigin.x*self.ratio_width)}, {int(self.labelOrigin.y*self.ratio_height)})")
     if self.labelOrigin.left:
-        if len(self.resized_points) == 4: return
-        self.resized_points.append([self.labelOrigin.x, self.labelOrigin.y])
+        if len(self.cal_reduced_target) == 4: return
+        self.cal_reduced_target.append([self.labelOrigin.x, self.labelOrigin.y])
     else:
         x,y = 999, 999
         radius = 40
-        for point in self.resized_points:
+        for point in self.cal_reduced_target:
             distance = math.sqrt(pow((point[0] - self.labelOrigin.x),2) + pow((point[1] - self.labelOrigin.y), 2))
             if distance < radius:
                 x = point[0]
                 y = point[1]
 
         if x != 999 and y != 999:
-            self.resized_points.remove([x,y])
+            self.cal_reduced_target.remove([x,y])
 
     self.draw_calibration_image(self.calibration_image)
 
 def move_circle(self, key):
-    if len(self.resized_points) < 1: return
+    if len(self.cal_reduced_target) < 1: return
 
-    x, y = self.resized_points[-1][0], self.resized_points[-1][1]
+    x, y = self.cal_reduced_target[-1][0], self.cal_reduced_target[-1][1]
 
     if key == Qt.Key_Right:
         x = x + 1
@@ -357,9 +390,8 @@ def move_circle(self, key):
     elif key == Qt.Key_Down:
         y = y + 1
 
-    self.resized_points.pop(-1)
-    self.resized_points.append([x, y])
+    self.cal_reduced_target.pop(-1)
+    self.cal_reduced_target.append([x, y])
 
-    self.labelPosition.setText(f"Position: {self.resized_points[-1][0]}, {self.resized_points[-1][1]} ({int(self.resized_points[-1][0]*self.ratio_width)}, {int(self.resized_points[-1][1]*self.ratio_height)})")
+    self.labelPosition.setText(f"Position: {self.cal_reduced_target[-1][0]}, {self.cal_reduced_target[-1][1]} ({int(self.cal_reduced_target[-1][0]*self.ratio_width)}, {int(self.cal_reduced_target[-1][1]*self.ratio_height)})")
     self.draw_calibration_image(self.calibration_image)
-

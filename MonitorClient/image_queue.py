@@ -4,12 +4,16 @@ import cv2
 
 from variables import *
 
-def stream_image(streaming_queue, return_queue):
+def stream_image(stream_queue, return_queue):
     while True:
-        if not streaming_queue.empty():
-            element = streaming_queue.get()
+        if not stream_queue.empty():
+            element = stream_queue.get()
+            if str(type(element[0])) == "<class 'str'>":
+                if element[0] == 'EXIT': break
             image = element[0]
             para = element[1]
+
+            if image is None: continue
 
             if len(image.shape) == 3:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -29,21 +33,21 @@ def stream_image(streaming_queue, return_queue):
             if para.intensity_line[0] == -1: para.intensity_line[0] = round(para.stream_size[0]/2)
             if para.intensity_line[1] == -1: para.intensity_line[1] = round(para.stream_size[1]/2)
 
-            actual_line = [para.intensity_line[0]*ratio[0], para.intensity_line[1]*ratio[1]]
+            actual_line = [round(para.intensity_line[0]*ratio[0]), round(para.intensity_line[1]*ratio[1])]
 
             yhist, xhist = image[:,actual_line[0]], image[actual_line[1],:]
 
             return_queue.put([STREAM, image, xbin, ybin, xhist, yhist])
 
-def analyze_image(queue_for_analyze, return_queue):
+def analyze_image(analyze_queue, return_queue):
     while True:
-        if not queue_for_analyze.empty():
-            element = queue_for_analyze.get()
+        if not analyze_queue.empty():
+            element = analyze_queue.get()
+            if str(type(element[0])) == "<class 'str'>":
+                if element[0] == 'EXIT': break
             image = element[0]
-            #image = np.transpose(image)
-            #cv2.imshow('test', image)
-            #cv2.waitKey()
-            #cv2.destroyAllWindows()
+
+            if image is None: continue
             para = element[1]
 
             if len(image.shape) == 3:
@@ -135,4 +139,10 @@ def analyze_image(queue_for_analyze, return_queue):
             return_element = [ANALYSIS, para, image, xbin, ybin, xhist, yhist, xfitvalue, yfitvalue,
                 center_pixel, center_real, [xwidth, xerror], [ywidth, yerror]]
 
+            from DigiMon import mutex
+
+            mutex.acquire()
+            while not return_queue.empty():
+                return_queue.get()
             return_queue.put(return_element)
+            mutex.release()

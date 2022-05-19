@@ -13,6 +13,8 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
+import pyqtgraph as pg
+
 from logger import LogStringHandler
 from variables import *
 import utilities as ut
@@ -46,19 +48,18 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.captured_image = None
         self.captured_image_aratio = None
-        self.captured_image_screen_size = (550, 550)
+        self.captured_image_screen_size = (400, 400)
 
         self.calibration_image = None
         self.calibration_image_aratio = None
         self.calibration_image_name = ""
         self.calibration_image_backup = None
-        self.calibration_image_screen_size = (450, 450)
+        self.calibration_image_screen_size = (400, 400)
 
-        self.perspective_method = None
-        self.original_points = self.destination_points = self.resized_points  = []
+        self.cal_target_points = self.cal_dest_points = self.cal_reduced_target = self.cal_real_target  = []
 
-        self.set_widgets_default()
         self.set_action()
+        self.set_widgets_default()
 
     def keyPressEvent(self, event):
         if self.tabWidget.currentIndex() == 2:
@@ -98,10 +99,23 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
     def closeEvent(self, event):
         reply = self.click_cancel()
-        if reply == True:
-            event.accept()
+        if reply == True: event.accept()
+        else: event.ignore()
+
+    def click_ok(self):
+        if self.checkSaveLast.isChecked(): self.save(last=True)
+        self.accept()
+
+    def click_cancel(self):
+        reply = QMessageBox.question(self, 'Message', 'Are you sure to cancel it?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.reject()
+            return True
         else:
-            event.ignore()
+            return False
+
+    def return_para(self):
+        return super().exec_()
 
     def set_checked(self, checkbox, state):
         if state:
@@ -114,23 +128,47 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.labelImage.resize(self.captured_image_screen_size[0], self.captured_image_screen_size[1])
         self.labelOrigin.resize(self.calibration_image_screen_size[0], self.calibration_image_screen_size[1])
         self.labelTrans.resize(self.calibration_image_screen_size[0], self.calibration_image_screen_size[1])
+        #self.framePVHist.resize(self.captured_image_screen_size[0], self.framePVHist.height())
 
-        self.set_checked(self.checkUseControlServer, self.para.ctl_conn)
-        if self.para.cam_conn:
-            self.connect_camera()
+        self.plotPVHist = pg.PlotWidget()
+        self.plotPVHist.setBackground('w')
+        self.plotPVHist.setLabel('bottom', 'Pixel Value')
+        self.plotPVHist.hideAxis('left')       
+        self.gridPVHist.addWidget(self.plotPVHist)
+        self.plotPVHist.setXRange(-1,256)
+
         if self.para.ctl_conn:
-            self.connect_server()
+            self.checkUseControlServer.setChecked(True)
+        self.connect_camera()
+        self.connect_server()
+        
+        if self.tabWidget_2.currentIndex() == 0: # Rectangle
+            if len(self.para.pixel_per_mm) == 2:
+                self.linePixelPerMM_x.setText(str(self.para.pixel_per_mm[0]))
+                self.linePixelPerMM_y.setText(str(self.para.pixel_per_mm[1]))
+        elif self.tabWidget_2.currentIndex() == 1: # Points
+            if len(self.cal_real_target) == 4:
+                self.lineQuad1x.setText(str(self.cal_real_target[0][0]))
+                self.lineQuad2x.setText(str(self.cal_real_target[0][1]))
+                self.lineQuad3x.setText(str(self.cal_real_target[1][0]))
+                self.lineQuad4x.setText(str(self.cal_real_target[1][1]))
+                self.lineQuad1y.setText(str(self.cal_real_target[2][0]))
+                self.lineQuad2y.setText(str(self.cal_real_target[2][1]))
+                self.lineQuad3y.setText(str(self.cal_real_target[3][0]))
+                self.lineQuad4y.setText(str(self.cal_real_target[3][1]))
 
-        self.sliderGain.setValue(self.para.gain)
-        self.sliderExposureTime.setValue(self.para.exp_time)
-        self.sliderX0.setValue(self.para.roi[0][0])
-        self.sliderY0.setValue(self.para.roi[0][1])
-        self.sliderWidth.setValue(self.para.roi[1][0])
-        self.sliderHeight.setValue(self.para.roi[1][1])
-        if not self.para.roi == [[0,0], [0,0]]:
-            self.select_roi = True
-        else:
-            self.select_roi = False
+        self.lineRotationAngle.setText(str(self.para.calibration_angle))
+
+        self.load_calibration_image()
+
+        self.set_photo_para(CAMERA_GAIN, value=self.para.gain)
+        self.set_photo_para(CAMERA_EXPOSURE_TIME, value=self.para.exp_time)
+        self.set_photo_para(CAMERA_ROI_X0, value=self.para.roi[0][0])
+        self.set_photo_para(CAMERA_ROI_Y0, value=self.para.roi[0][1])
+        self.set_photo_para(CAMERA_ROI_WIDTH, value=self.para.roi[1][0])
+        self.set_photo_para(CAMERA_ROI_HEIGHT, value=self.para.roi[1][1])
+        self.apply_roi()
+
         if self.para.filter_code is not None:
             self.comboFilter.setCurrentIndex(self.para.filter_code - 60000 + 1)
             self.load_filter_parameters(reset=False)
@@ -139,27 +177,15 @@ class SetupWindow(QDialog, Ui_SetupWindow):
                 for key, value in self.para.filter_para.items():
                     if widget.label.text() == key:
                         widget.linevalue.setText(str(value))
-        if self.perspective_method == 'Rectangle':
-            self.tabWidget_2.setCurrentIndex(0)
-            self.linePixelPerMM_x.setText(str(self.para.pixel_per_mm[0]))
-            self.linePixelPerMM_y.setText(str(self.para.pixel_per_mm[1]))
-        elif self.perspective_method == 'Point':
-            self.tabWidget_2.setCurrentIndex(1)
-            self.lineQuad1x.setText(str(self.points[0]))
-            self.lineQuad2x.setText(str(self.points[1]))
-            self.lineQuad3x.setText(str(self.points[2]))
-            self.lineQuad4x.setText(str(self.points[3]))
-            self.lineQuad1y.setText(str(self.points[4]))
-            self.lineQuad2y.setText(str(self.points[5]))
-            self.lineQuad3y.setText(str(self.points[6]))
-            self.lineQuad4y.setText(str(self.points[7]))
-    
+
     def set_action(self):
         # Signal
         # Outside tab widgets
         self.pushSave.clicked.connect(self.save)
-        self.pushLoad.clicked.connect(lambda: self.load())
-        #self.pushReset.clicked.connect(self.reset_parameters)
+        self.pushLoad.clicked.connect(self.load)
+        self.pushReset.clicked.connect(self.reset_all)
+
+        
         self.pushOk.clicked.connect(self.click_ok)
         self.pushCancel.clicked.connect(self.click_cancel)
 
@@ -180,10 +206,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.checkCameraConnected.clicked.connect(lambda: self.set_checked(self.checkCameraConnected, self.para.cam_conn))
         self.checkControllerConnected.clicked.connect(lambda: self.set_checked(self.checkControllerConnected, self.para.ctl_conn))
 
-        self.pushConnectCamera.clicked.connect(self.connect_camera())
-        self.pushDisconnectCamera.clicked.connect(self.disconnect_camera())
-        self.pushConnectController.clicked.connect(self.connect_server())
-        self.pushDisconnectController.clicked.connect(self.disconnect_server())
+        self.pushConnectCamera.clicked.connect(self.connect_camera)
+        self.pushDisconnectCamera.clicked.connect(self.disconnect_camera)
+        self.pushConnectController.clicked.connect(self.connect_server)
+        self.pushDisconnectController.clicked.connect(self.disconnect_server)
 
         self.comboMonitor.addItem('')
         for i in range(NUMBER_OF_MONITORS):
@@ -198,9 +224,9 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.pushConvert.clicked.connect(self.convert_calibration_image)
         ### Rotation
         self.lineRotationAngle.setValidator(QDoubleValidator(0.0, 360.0, 3))
-        self.lineRotationAngle.editingFinished.connect(lambda: self.draw_calibration_image(self.calibration_image))
-        self.pushAngleUp.clicked.connect(lambda: self.set_rotation_angle(True))
-        self.pushAngleDown.clicked.connect(lambda: self.set_rotation_angle(False))
+        self.lineRotationAngle.editingFinished.connect(self.set_rotation_angle(2))
+        self.pushAngleUp.clicked.connect(lambda: self.set_rotation_angle(0))
+        self.pushAngleDown.clicked.connect(lambda: self.set_rotation_angle(1))
         ### Perspective matrix
         ##### Rectangle
         self.linePixelPerMM_x.setValidator(QDoubleValidator(0.0, 9999.99, 2))
@@ -216,12 +242,21 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         self.lineQuad4y.setValidator(QDoubleValidator(-9999.99, 9999.99, 2))
 
         # Photo
+        # FIXME
+        self.checkConnection.clicked.connect(lambda: self.set_checked(self.checkConnection, self.para.cam_conn))
+        self.checkCalibration.clicked.connect(lambda: self.set_checked(self.checkCalibration, self.para.cam_conn))
+
+
+        self.pushConnectCamera_2.clicked.connect(self.connect_camera)
+        self.pushCalibrate.clicked.connect(self.convert_calibration_image)
+        self.pushCaptureImage.clicked.connect(lambda: self.take_a_picture(False))
+
         self.labelImage.move.connect(self.set_roi)
         self.labelImage.ldclicked.connect(self.apply_roi)
         self.labelImage.rdclicked.connect(lambda: self.apply_roi(True))
 
-        self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN))
-        self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME))
+        self.sliderGain.valueChanged.connect(lambda: self.set_photo_para(CAMERA_GAIN, slider=True))
+        self.sliderExposureTime.valueChanged.connect(lambda: self.set_photo_para(CAMERA_EXPOSURE_TIME, slider=True))
         
         self.lineGain.setValidator(QIntValidator(self))
         self.lineExposureTime.setValidator(QIntValidator(self))
@@ -230,10 +265,10 @@ class SetupWindow(QDialog, Ui_SetupWindow):
 
         self.pushApplyConf.clicked.connect(self.take_a_picture)
 
-        self.sliderX0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_X0))
-        self.sliderY0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_Y0))
-        self.sliderWidth.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_WIDTH))
-        self.sliderHeight.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_HEIGHT))
+        self.sliderX0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_X0, slider=True))
+        self.sliderY0.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_Y0, slider=True))
+        self.sliderWidth.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_WIDTH, slider=True))
+        self.sliderHeight.valueChanged.connect(lambda: self.set_photo_para(CAMERA_ROI_HEIGHT, slider=True))
 
         self.comboFilter.currentTextChanged.connect(self.load_filter_parameters)
         self.pushApplyFilter.clicked.connect(self.apply_filter_parameters)
@@ -247,40 +282,43 @@ class SetupWindow(QDialog, Ui_SetupWindow):
         else:
             fname = os.path.join(base_path, 'setup', 'last.yaml')
 
-        camera_url = self.lineCameraAddr.text()
-        controller_ip = '.'.join(i.text() for i in[self.lineControllerIP1, self.lineControllerIP2, self.lineControllerIP3, self.lineControllerIP4])
-
-        if self.perspective_method == 'Rectangle':
-            para = {'Width': self.para.pixel_per_mm[0], 'Height': self.para.pixel_per_mm[1]}
+        if self.para.calibrated:
+            if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == 'Rectangle':
+                para = {'Width': self.para.pixel_per_mm[0], 'Height': self.para.pixel_per_mm[1]}
+            else:
+                para = {'Point1': self.cal_real_target[0],
+                        'Point2': self.cal_real_target[1],
+                        'Point3': self.cal_real_target[2],
+                        'Point4': self.cal_real_target[3],
+                        }
         else:
-            para = {'Point1': [self.lineQuad1x.text(), self.lineQuad1y.text()],
-                    'Point2': [self.lineQuad2x.text(), self.lineQuad2y.text()],
-                    'Point3': [self.lineQuad3x.text(), self.lineQuad3y.text()],
-                    'Point4': [self.lineQuad4x.text(), self.lineQuad4y.text()],
-                    }
+            if self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()) == 'Rectangle':
+                para = {'Width': 1.0, 'Height': 1.0}
+            else:
+                para = {'Point1': [[0,0],[0,0]],
+                        'Point2': [[0,0],[0,0]],
+                        'Point3': [[0,0],[0,0]],
+                        'Point4': [[0,0],[0,0]],
+                        }
 
-        perspective_para = {"OriginalPoint":self.original_points,
+        perspective_para = {"TargetPoints":self.cal_target_points,
                             "Parameter":para}
-
-        roi_slider = [[self.sliderX0.value(), self.sliderY0.value()], [self.sliderWidth.value(), self.sliderHeight.value()]]
 
         fout = open(fname, 'w')
         fout.write(textwrap.dedent(f"""\
-            Auto: {str(last)}
-            CameraSDK: "{self.camera_sdk}"
-            CameraURL: "{camera_url}"
+            CameraSDK: "{self.para.sdk}"
+            CameraURL: "{self.para.url}"
             ControllerUse: {str(self.checkUseControlServer.isChecked())}
-            ControllerIP: {controller_ip}
-            ControllerPort: {self.lineControllerIP5.text()}
-            Gain: {self.gain}
+            ControllerIP: {str(self.para.server_ip)}
+            MonitorNumber: {self.para.monitor_id}
+            Gain: {self.para.gain}
             ExposureTime: {self.para.exp_time}
             ROI: {str(self.para.roi)}
-            ROISlider: {str(roi_slider)}
-            FilterType: "{self.comboFilter.currentText()}"
+            FilterType: "{self.para.filter_code}"
             FilterParameter: {str(self.para.filter_para)}
             CalibrationImage: "{str(self.calibration_image_name)}"
-            Rotation: {self.lineRotationAngle.text()}
-            PerspectiveMatrixMethod: {str(self.perspective_method)}
+            CalibrationAngle: {self.para.calibration_angle}
+            PerspectiveMatrixMethod: {str(self.tabWidget_2.tabText(self.tabWidget_2.currentIndex()))}
             PerspectiveMatrixParameters: {str(perspective_para)}
             """))
         fout.close()
@@ -291,111 +329,96 @@ class SetupWindow(QDialog, Ui_SetupWindow):
             fname = QFileDialog.getOpenFileName(self, "Select Setup file", selectedFilter=extension[0], filter='\n'.join(i for i in extension))[0]
         
         if fname != '':
+            self.logger.info(f"Open Configuration file {fname}.")
             with open(fname, 'r') as f:
                 cfg = yaml.load(f, Loader=yaml.FullLoader)
-                
-                self.lineCameraAddr.setText(str(cfg['CameraURL']))
-                self.camera_sdk = str(cfg['CameraSDK'])
+
+                # Network tab
+                ### Camera
+                self.para.sdk = str(cfg['CameraSDK'])
+                self.para.url = str(cfg['CameraURL'])
+
+                self.lineCameraAddr.setText(self.para.url)
                 for idx in range(self.comboSDKType.count()):
-                    if self.comboSDKType.itemText(idx) == self.camera_sdk:
+                    if self.comboSDKType.itemText(idx) == self.para.sdk:
                         self.comboSDKType.setCurrentIndex(idx)
                         break
-                
+
                 self.connect_camera()
 
-                if cfg['ControllerUse']:
-                    self.checkUseControlServer.setChecked(True)
-                    controller_ip = str(cfg['ControllerIP']).split('.')
-                    if len(controller_ip):
-                        self.lineControllerIP1.setText(controller_ip[0]) 
-                        self.lineControllerIP2.setText(controller_ip[1])
-                        self.lineControllerIP3.setText(controller_ip[2])
-                        self.lineControllerIP4.setText(controller_ip[3])
-                    if str(cfg['ControllerPort']) != 'None':
-                        self.lineControllerIP5.setText(str(cfg['ControllerPort']))
-                    self.connect_server()
+                ### Controller
+                self.para.server_ip = str(cfg['ControllerIP'])
+                self.para.monitor_id = str(cfg['MonitorNumber'])
+                self.checkUseControlServer.setChecked(cfg['ControllerUse'])
+                ip, port = self.server_ip.split(':')
+                ip = ip.split('.')
+                if len(ip) == 4:
+                    self.lineControllerIP1.setText(ip[0]) 
+                    self.lineControllerIP2.setText(ip[1])
+                    self.lineControllerIP3.setText(ip[2])
+                    self.lineControllerIP4.setText(ip[3])
+                if port != '':
+                    self.lineControllerIP5.setText(port)
 
-                self.gain = int(cfg['Gain'])
-                self.sliderGain.setValue(self.gain)
-                self.para.exp_time = int(cfg['ExposureTime'])
-                self.sliderExposureTime.setValue(self.para.exp_time)
+                self.connect_server()
 
-
-                for idx in range(self.comboFilter.count()):
-                    if self.comboFilter.itemText(idx) == cfg['FilterType']:
-                        self.comboFilter.setCurrentIndex(idx)
-                        self.load_filter_parameters()
-                        break
-                self.para.filter_para = cfg['FilterParameter']
-                for idx in range(self.listParameters.count()):
-                    widget = self.listParameters.itemWidget(self.listParameters.item(idx))
-                    for key, value in self.para.filter_para.items():
-                        if widget.label.text() == key:
-                            widget.linevalue.setText(str(value))
-
+                # Calibration tab
                 self.calibration_image_name = str(cfg['CalibrationImage'])
-                self.lineRotationAngle.setText(str(cfg['Rotation']))
-                self.perspective_method = str(cfg['PerspectiveMatrixMethod'])
-                self.original_points = cfg['PerspectiveMatrixParameters']['OriginalPoint']
-                if self.perspective_method == 'Rectangle':
-                    self.tabWidget_2.setCurrentIndex(0)
-                    self.linePixelPerMM_x.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Width']))
-                    self.linePixelPerMM_y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Height']))
-                elif self.perspective_method == 'Point':
-                    self.tabWidget_2.setCurrentIndex(1)
-                    self.lineQuad1x.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point1'][0]))
-                    self.lineQuad2x.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point2'][0]))
-                    self.lineQuad3x.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point3'][0]))
-                    self.lineQuad4x.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point4'][0]))
-                    self.lineQuad1y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point1'][1]))
-                    self.lineQuad2y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point2'][1]))
-                    self.lineQuad3y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point3'][1]))
-                    self.lineQuad4y.setText(str(cfg['PerspectiveMatrixParameters']['Parameter']['Point4'][1]))
+                self.cal_target_points = cfg['PerspectiveMatrixParameters']['TargetPoints']
+                if self.tabWidget_2.tabText(0) == cfg['PerspectiveMatrixMethod']:
+                    self.para.pixel_per_mm = [float(cfg['PerspectiveMatrixParameters']['Parameter']['Width']), float(cfg['PerspectiveMatrixParameters']['Parameter']['Height'])]
+                else:
+                    tmp = cfg['PerspectiveMatrixParameters']['Parameter']
+                    self.cal_real_target = [tmp['Point1'], tmp['Point2'], tmp['Point3'], tmp['Point4']]
+
+                self.para.calibration_angle = cfg['CalibrationAngle']
+
+                for i in range(len(self.tabWidget_2.count())):
+                    if str(cfg['PerspectiveMatrixMethod']) == self.tabWidget_2.tabText(i):
+                        self.tabWidget_2.setCurrentIndex(i)
+                        break
+
+                if self.tabWidget_2.currentIndex() == 0: # Rectangle
+                    self.linePixelPerMM_x.setText(str(self.para.pixel_per_mm[0]))
+                    self.linePixelPerMM_y.setText(str(self.para.pixel_per_mm[1]))
+                elif self.tabWidget_2.currentIndex() == 1: # Points
+                    self.lineQuad1x.setText(str(self.cal_real_target[0][0]))
+                    self.lineQuad2x.setText(str(self.cal_real_target[0][1]))
+                    self.lineQuad3x.setText(str(self.cal_real_target[1][0]))
+                    self.lineQuad4x.setText(str(self.cal_real_target[1][1]))
+                    self.lineQuad1y.setText(str(self.cal_real_target[2][0]))
+                    self.lineQuad2y.setText(str(self.cal_real_target[2][1]))
+                    self.lineQuad3y.setText(str(self.cal_real_target[3][0]))
+                    self.lineQuad4y.setText(str(self.cal_real_target[3][1]))
+
+                self.lineRotationAngle.setText(str(self.para.calibration_angle))
 
                 self.load_calibration_image()
-                self.lineGain.setText(str(cfg['Gain']))
-                self.set_photo_para(CAMERA_GAIN, False)
-                self.lineExposureTime.setText(str(cfg['ExposureTime']))
-                self.set_photo_para(CAMERA_EXPOSURE_TIME, False)
+
+                # Image tab
+                self.set_photo_para(CAMERA_GAIN, value=cfg['Gain'])
+                self.set_photo_para(CAMERA_EXPOSURE_TIME, value=cfg['ExposureTime'])
 
                 self.take_a_picture()
 
-                roi_slider = cfg['ROISlider']
-                self.sliderX0.setValue(roi_slider[0][0])
-                self.sliderY0.setValue(roi_slider[0][1])
-                self.sliderWidth.setValue(roi_slider[1][0])
-                self.sliderHeight.setValue(roi_slider[1][1])
-                self.para.roi = cfg['ROI']
-                if self.para.roi != [[0, 0], [0, 0]]:
-                    self.apply_roi()
+                self.para.filter_code = int(cfg['FilterType'])
+                self.para.filter_para = cfg['FilterParameter']
+                for idx in range(self.comboFilter.count()):
+                    if self.comboFilter.itemText(idx) == cfg['FilterType']:
+                        self.comboFilter.setCurrentIndex(idx)
+                        break
 
-    def click_ok(self):
-        base_path = os.path.abspath(os.path.dirname(__file__))
+                self.load_filter_parameters()
+                self.apply_filter_parameters()
 
-        if self.checkSaveLast.isChecked():
-            self.save(last=True)
-        else:
-            if os.path.exists(os.path.join(base_path,'setup','last.yaml')):
-                os.remove(os.path.join(base_path, 'setup', 'last.yaml'))
-        if self.checkCameraConnected.isChecked():
-            self.camera_connected = True
-        if self.checkControllerConnected.isChecked():
-            self.controller_connected = True
+                self.set_photo_para(CAMERA_ROI_X0, value=cfg['ROI'][0][0])
+                self.set_photo_para(CAMERA_ROI_Y0, value=cfg['ROI'][0][1])
+                self.set_photo_para(CAMERA_ROI_WIDTH, value=cfg['ROI'][1][0])
+                self.set_photo_para(CAMERA_ROI_HEIGHT, value=cfg['ROI'][1][1])
+                self.apply_roi()
 
-        self.accept()
-
-    def click_cancel(self):
-        reply = QMessageBox.question(self, 'Message', 'Are you sure to cancel it?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            #self.initialize_parameters(True)
-            #self.reset_all = True
-            self.reject()
-            return True
-        else:
-            return False
-
-    def return_para(self):
-        return super().exec_()
+    def reset_all(self):
+        pass
 
     ### Methods for Connection
     from setup_connection import connect_camera
@@ -423,3 +446,4 @@ class SetupWindow(QDialog, Ui_SetupWindow):
     from setup_image import apply_roi
     from setup_image import load_filter_parameters
     from setup_image import apply_filter_parameters
+    from setup_image import draw_pvhist

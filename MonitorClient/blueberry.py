@@ -39,10 +39,7 @@ from DigiMon import mutex
 class Blueberry(QThread):
     watch_signal = Signal(bool)
     thread_logger_signal = Signal(str, str)
-    screen_signal = Signal(int, np.ndarray)
-    graph_signal = Signal(int, list, list)
     save_signal = Signal(str)
-    plot_signal = Signal(np.ndarray, list, list, np.ndarray, np.ndarray, list, list)
 
     def __init__(self, para, main, stream_queue, analysis_queue, return_queue):
         super().__init__()
@@ -59,38 +56,14 @@ class Blueberry(QThread):
         self.camera = None
         self.prev_time = 0 # Only for OpenCV
         self.count = 1 # Image Taking
-        self.para.url = None
-
-        self.original_image = None
-
-        self.filter_code = None
-        self.filter_para = {}
-
-        self.rotate_angle = 0.0
-        self.destination_points = np.float32([[0,0],[0,800],[800,0],[800,800]]) # 이미지 크기는 나중에 바꿀 수 있음...?
-        self.pixel_per_mm = [1.0, 1.0]
-
-        self.original_pixel = None
-        self.resized_pixel = None
+        self.fps = 20
 
         self.working = True
 
         self.idx = None
         self.frame = None
 
-        self.gain = None
-        self.exposure_time = None
-        self.ROI = [[0,0], [0,0]]
-        self.intensity_line = [-1,-1]
-
-        self.calibration_angle = 0
-
         self.repeat = None
-        self.rotation = 0
-        self.flip_rl = 0
-        self.flip_ud = 0
-
-        self.current = 0.0
 
         self.outdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'output', datetime.datetime.today().strftime('%y%m%d'))
         if not os.path.exists(self.outdir):
@@ -177,32 +150,66 @@ class Blueberry(QThread):
         return message
 
     def disconnect_device(self):
-        pass
+        if "Pylon" in self.para.sdk:
+            self.camera.Close()
+        self.para.cam_conn = False
 
     def run(self):
-        if self.para.sdk == 'OpenCV':
-            try:
-                img_resp = cv2.VideoCapture(self.para.url)
-            except:
-                connect = False
-                for i in range(5):
-                    try:
-                        img_resp = cv2.VideoCapture(self.para.url)
-                        connect = True
-                        break
-                    except:
-                        pass
-                
-                if not connect: 
-                    self.para.cam_conn = False
-                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+        while self.working:
+            if not self.para.cam_conn or self.para.cam_request == CAMERA_REQUEST_NOTHING: continue
+            if self.para.cam_request == CAMERA_REQUEST_CAPTURE and self.count == 0:
+                self.watch_signal.emit(True)
+                mutex.acquire()
+                while not self.return_queue.empty():
+                    self.return_queue.get()
+                while not self.analysis_queue.empty():
+                    self.analysis_queue.get()
+                while not self.stream_queue.empty():
+                    self.stream_queue.get()
+                mutex.release()
+            
+            if self.para.cam_request == CAMERA_REQUEST_DISCONNECT: break
 
-            gain = self.para.gain
+            image = None
+            if 'OpenCV' in self.para.sdk:
+                try:
+                    img_resp = cv2.VideoCapture(self.para.url)
+                except:
+                    connect = False
+                    for i in range(5):
+                        try:
+                            img_resp = cv2.VideoCapture(self.para.url)
+                            connect = True
+                            break
+                        except:
+                            pass
+                        
+                    if not connect: 
+                        self.para.cam_conn = False
+                        self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
 
-        elif self.para.sdk == 'Pylon':
-            try:
-                self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-                
+                gain = self.para.gain
+
+                retval, tmp = img_resp.read()
+                image = cv2.cvtColor(tmp, cv2.COLOR_BGR2GRAY)
+
+            elif 'Pylon' in self.para.sdk:
+                try:
+                    if not self.camera.IsGrabbing():
+                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                except:
+                    connect = False
+                    for i in range(5):
+                        try:
+                            self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+                            connect = True
+                        except:
+                            pass
+                    
+                    if not connect:
+                        self.para.cam_conn = False
+                        self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+
                 if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
                     minimum = self.camera.ExposureTimeRaw.Min
                     maximum = self.camera.ExposureTimeRaw.Max
@@ -212,7 +219,6 @@ class Blueberry(QThread):
                         self.thread_logger_signal.emit('INFO', str(f"Set camera exposure Time: {self.para.exp_time}"))
                     except:
                         self.thread_logger_signal.emit('ERROR', str(f'Setting exposure time is failed.'))
-            
 
                 minimum = self.camera.GainRaw.Min
                 maximum = self.camera.GainRaw.Max
@@ -224,44 +230,6 @@ class Blueberry(QThread):
                     except:
                         self.thread_logger_signal.emit('ERROR', str(f'Setting gain is failed.'))
 
-                if self.camera.AcquisitionFrameRate.GetValue() != self.para.fps:
-                    try:
-                        self.camera.AcquisitionFrameRate.SetValue(self.para.fps)
-                        self.thread_logger_signal.emit('INFO', str(f"Set camera frame rate: {self.para.fps}"))
-                    except:
-                        self.thread_logger_signal.emit('ERROR', str(f'Setting frame rate is failed.'))
-            except:
-                connect = False
-                for i in range(5):
-                    try:
-                        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-                        connect = True
-                    except:
-                        pass
-                
-                if not connect:
-                    self.para.cam_conn = False
-                    self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
-
-        while self.working:
-            if not self.para.cam_conn or  self.para.cam_request == CAMERA_REQUEST_NOTHING: continue
-            if self.para.cam_request == CAMERA_REQUEST_STREAM and self.count == 1:
-                self.watch_signal.emit(True)
-            
-            if self.para.cam_request == CAMERA_REQUEST_DISCONNECT: break
-            image = None
-            if self.para.sdk == 'OpenCV':
-                retval, image = img_resp.read()
-                current_time = time.time() - self.prev_time
-                if retval and (current_time > 1.0/self.para.fps):
-                    self.prev_time = time.time()
-                    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-            elif self.para.sdk == 'Pylon':
-                if not self.camera.IsGrabbing(): 
-                    self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-                    self.thread_logger_signal.emit('INFO', str(f'Reconnect camera.'))
-
                 if self.camera.IsGrabbing():
                     result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
                     if result.GrabSucceeded():
@@ -270,13 +238,13 @@ class Blueberry(QThread):
                         result.Release()
 
             if image is not None:
-                if self.para.cam_request == CAMERA_REQUEST_CAPTURE:
-                    if not os.path.exists(os.path.join(self.outdir, 'image', self.para.current, 'raw')):
-                        os.makedirs(os.path.join(self.outdir, 'image', self.para.current, 'raw'))
-                    if not os.path.exists(os.path.join(self.outdir, 'image', self.para.current, 'analyzed')):
-                        os.makedirs(os.path.join(self.outdir, 'image', self.para.current, 'analyzed'))
-                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{gain}.png"
-                    outname = os.path.join(self.outdir, 'image/raw', imagename)
+                if self.para.cam_request == CAMERA_REQUEST_CAPTURE and self.count < self.para.repeat:
+                    if not os.path.exists(os.path.join(self.outdir, 'image',  'raw')):
+                        os.makedirs(os.path.join(self.outdir, 'image',  'raw'))
+                    if not os.path.exists(os.path.join(self.outdir, 'image', 'analyzed')):
+                        os.makedirs(os.path.join(self.outdir, 'image',  'analyzed'))
+                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{self.para.gain}.png"
+                    outname = os.path.join(self.outdir, 'image', 'raw', imagename)
                     cv2.imwrite(outname, image)
                     self.save_signal.emit(outname)
 
@@ -284,23 +252,26 @@ class Blueberry(QThread):
                 image = util.transform_image(self.para, image)
                 image = util.slice_image(self.para, image)
                 image = util.rotate_image(self.para, image)
-
+                
                 if self.para.cam_request == CAMERA_REQUEST_STREAM:
                     self.stream_queue.put([image, self.para])
                 elif self.para.cam_request == CAMERA_REQUEST_CAPTURE:
-                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{gain}.png"
-                    outname = os.path.join(self.outdir, 'image/analyzed', imagename)
-                    cv2.imwrite(outname, image)
-
-                    self.analysis_queue.put([image, self.para])
-
                     if self.count < self.para.repeat:
+                        self.thread_logger_signal.emit('INFO', str(f'Take a picture. {self.count + 1}'))
+                        imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{self.para.gain}.png"
+                        outname = os.path.join(self.outdir, 'image', 'analyzed', imagename)
+                        cv2.imwrite(outname, image)
+
+                        self.analysis_queue.put([image, self.para])
+
                         self.count += 1
                     elif self.count == self.para.repeat:
-                        self.count == 1
-                        self.para.cam_request = CAMERA_REQUEST_STREAM
+                        self.count = 0
+                        self.para.set_parameter(CAMERA_REQUEST_STREAM)
                         self.watch_signal.emit(False)
 
+                self.msleep(round(1.0/self.para.fps*1000))
+    
     def stop(self):
         self.working = False
         self.sleep(1)
@@ -309,7 +280,7 @@ class Blueberry(QThread):
     def take_a_picture(self, image):
         # It is only used for setup.
         image = None
-        if self.para.sdk == 'OpenCV':
+        if 'OpenCV' in self.para.sdk:
             try:
                 img_resp = cv2.VideoCapture(self.para.url)
             except:
@@ -334,8 +305,10 @@ class Blueberry(QThread):
                 self.prev_time = time.time()
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        elif self.para.sdk == 'Pylon':
+        elif 'Pylon' in self.para.sdk:
             try:
+                if self.camera.IsGrabbing():
+                    self.camera.StopGrabbing()
                 self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
                 
                 if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
@@ -348,7 +321,6 @@ class Blueberry(QThread):
                     except:
                         self.thread_logger_signal.emit('ERROR', str(f'Setting exposure time is failed.'))
             
-
                 minimum = self.camera.GainRaw.Min
                 maximum = self.camera.GainRaw.Max
                 gain = round(minimum + round((maximum - minimum) * self.para.gain / 100.0))
@@ -359,20 +331,22 @@ class Blueberry(QThread):
                     except:
                         self.thread_logger_signal.emit('ERROR', str(f'Setting gain is failed.'))
 
-                if self.camera.AcquisitionFrameRate.GetValue() != self.para.fps:
-                    try:
-                        self.camera.AcquisitionFrameRate.SetValue(self.para.fps)
-                        self.thread_logger_signal.emit('INFO', str(f"Set camera frame rate: {self.para.fps}"))
-                    except:
-                        self.thread_logger_signal.emit('ERROR', str(f'Setting frame rate is failed.'))
+                #if self.camera.AcquisitionFrameRate.GetValue() != self.para.fps:
+                #    try:
+                #        self.camera.AcquisitionFrameRate.SetValue(self.para.fps)
+                #        self.thread_logger_signal.emit('INFO', str(f"Set camera frame rate: {self.para.fps}"))
+                #    except:
+                #        self.thread_logger_signal.emit('ERROR', str(f'Setting frame rate is failed.'))
             except:
                 connect = False
                 for i in range(5):
                     try:
+                        if self.camera.IsGrabbing():
+                            self.camera.StopGrabbing()
                         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
                         connect = True
                     except:
-                        pass
+                        time.sleep(0.5)
                 
                 if not connect:
                     self.para.cam_conn = False
@@ -383,52 +357,29 @@ class Blueberry(QThread):
                 if result.GrabSucceeded():
                     image = self.converter.Convert(result)
                     image = image.GetArray()
+                    if len(image.shape) == 3:
+                        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                     result.Release()
 
         if image is None:
-            self.thread_logger_signal.emit('ERROR', 'Taking a picture is failed.')
+            self.thread_logger_signal.emit('ERROR', 'Image is None. Taking a picture is failed.')
             return
         else:
             return image
 
-    @Slot(int, list)
-    def receive_signal_from_setup(self, idx, value):
-        if idx == CONNECT_CAMERA:
-            self.connect_camera()
-
     @Slot(int, int)
-    def receive_signal(self, idx, value):
-        self.idx = idx
-        # OpenCV can not control IP webcam's parameters...
-        ### Camera Control
-        if self.idx == CAMERA_GAIN:
-            self.parent.self.para.gain = float(value)
-        elif self.idx == CAMERA_EXPOSURE_TIME:
-            self.exposure_time = round(value)
-        elif self.idx == CAMERA_FPS:
-            if self.frame != value:
-                mutex.acquire()
-                while not self.analysis_queue.empty():
-                    self.analysis_queue.get()
-                mutex.release()
-            self.frame = int(value)
-        elif self.idx == CAMERA_REPEAT:
-            self.repeat = value
-        elif self.idx == CAMERA_ROTATION_RIGHT:
-            self.rotation += 90
-            self.rotation = self.rotation % 360
-        elif self.idx == CAMERA_ROTATION_LEFT:
-            self.rotation += 270
-            self.rotation = self.rotation % 360
-        elif self.idx == CAMERA_FLIP_UP_DOWN:
-            self.flip_ud += 1
-            self.flip_ud = self.flip_ud % 2
-        elif self.idx == CAMERA_FLIP_RIGHT_LEFT:
-            self.flip_rl += 1
-            self.flip_rl = self.flip_rl % 2
+    def set_camera_parameter(self, idx, value):
+        self.para.set_parameter(idx, value)
 
     @Slot(str)
     def redraw_signal(self, name):
+        mutex.acquire()
+        while not self.return_queue.empty():
+            self.return_queue.get()
+        while not self.analysis_queue.empty():
+            self.analysis_queue.get()
+        while not self.stream_queue.empty():
+            self.stream_queue.get()
         try:
             image = cv2.imread(name)
         except:
@@ -441,10 +392,6 @@ class Blueberry(QThread):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         self.save_signal.emit(name)
-        self.original_image = image
-        self.original_pixel = [self.original_image.shape[1], self.original_image.shape[0]]
-
-        #xbin, ybin, xhist_percent, yhist_percent, xfitline, yfitline, xrange, yrange = ut.analyze_picture(image=image, shot=True)
-        #beam_range = xrange + yrange
 
         self.analysis_queue.put([image, self.para])
+        mutex.release()

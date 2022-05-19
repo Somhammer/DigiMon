@@ -66,4 +66,18 @@ if __name__ == '__main__':
     stream_proc.start()
     analysis_proc.start()
 
-    sys.exit(app.exec())
+    if app.exec() == 0:
+        mutex.acquire()
+        while not stream_queue.empty():
+            stream_queue.get()
+        while not analysis_queue.empty():
+            analysis_queue.get()
+        while not return_queue.empty():
+            return_queue.get()
+        stream_queue.put(['EXIT'])
+        analysis_queue.put(['EXIT'])
+        mutex.release()
+
+        #stream_proc.join()
+        #analysis_proc.join()
+        #sys.exit(0)

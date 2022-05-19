@@ -1,7 +1,10 @@
 def connect_camera(self):
     self.para.sdk = self.comboSDKType.currentText()
-    self.logger.info(f"Set SDK as {self.para.sdk}.")
     self.para.url = self.lineCameraAddr.text()
+
+    if self.para.sdk == '' or self.para.url == '': return
+    
+    self.logger.info(f"Set SDK as {self.para.sdk}.")
     self.logger.info(f"Connect to {self.para.url}.")
 
     if self.para.cam_conn:
@@ -24,12 +27,17 @@ def connect_camera(self):
         self.take_a_picture()
 
 def disconnect_camera(self):
-    pass
+    if self.para.cam_conn:
+        self.blueberry.stop()
+        self.blueberry.disconnect_device()
+    else: return
 
 def connect_server(self):
+    if self.para.server_ip =='': return
     if not self.checkUseControlServer.isChecked():
         self.logger.warning(f"Please, check 'Use Network Camera Controller Server' first.")
         return
+
     ip1, ip2, ip3, ip4, port = self.lineControllerIP1, self.lineControllerIP2, self.lineControllerIP3, self.lineControllerIP4, self.lineControllerIP5
     if any(i.text() == '' for i in [ip1, ip2, ip3, ip4]): return
     self.para.server_ip = '.'.join(i.text() for i in [ip1, ip2, ip3, ip4])+':'+port.text()
@@ -56,4 +64,7 @@ def connect_server(self):
     self.set_checked(self.checkControllerConnected, self.para.ctl_conn)
 
 def disconnect_server(self):
-    pass
+    if self.para.cam_conn:
+        self.blackberry.stop()
+        self.blackberry.disconnect_device()
+    else: return

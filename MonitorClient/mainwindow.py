@@ -38,11 +38,14 @@ from DigiMon import mutex
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     redraw_signal = Signal(str)
-
+    set_camera_parameter = Signal(int, int)
     def __init__(self, para, stream_queue, analysis_queue, return_queue):
         super(MainWindow, self).__init__()
         self.setupUi(self)
         self.para = para
+        self.stream_queue = stream_queue
+        self.analysis_queue = analysis_queue
+        self.return_queue = return_queue
 
         self.dialog = False
 
@@ -90,24 +93,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.beamx_size = []
         self.beamy_size = []
 
+        self.previous = self.main_size = []
         self.set_action()
         
-        self.main_size = [self.width(), self.height()]
         self.showMaximized()
         self.initialize()
-        self.main_size = [self.width(), self.height()]
-        self.plot_livex_size = [self.frameLiveXProfile.width(), self.frameLiveXProfile.height()]
-        self.plot_livey_size = [self.frameLiveYProfile.width(), self.frameLiveYProfile.height()]
-        self.plot_profile_size = [self.frameProfile.width(), self.frameProfile.height()]
-        self.plot_beamx_size = [self.frameProfileX.width(), self.frameProfileX.height()]
-        self.plot_beamy_size = [self.frameProfileY.width(), self.frameProfileY.height()]
-
-        self.para.stream_size = [self.frameCamera.width(), self.frameCamera.height()]
-
 
     def set_action(self):
         # Signal connection
         self.redraw_signal.connect(self.blueberry.redraw_signal)
+        self.set_camera_parameter.connect(self.blueberry.set_camera_parameter)
 
         # Hidden window - Closing Controller
         self.keyHidden = QShortcut(QKeySequence('Ctrl+F10'), self)
@@ -120,21 +115,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Camera Setup
         self.pushSetup.clicked.connect(self.setup_module)
         self.sliderFrameRate.valueChanged.connect(lambda: self.lineFrameRate.setText(str(self.sliderFrameRate.value())))
-        self.sliderFrameRate.sliderReleased.connect(lambda: self.para.set_parameter(CAMERA_FPS, self.sliderFrameRate.value()))
+        self.sliderFrameRate.sliderReleased.connect(lambda: self.set_camera_parameter.emit(CAMERA_FPS, self.sliderFrameRate.value()))
         self.sliderRepeat.valueChanged.connect(lambda: self.lineRepeat.setText(str(self.sliderRepeat.value())))
-        self.sliderRepeat.sliderReleased.connect(lambda: self.para.set_parameter(CAMERA_REPEAT, self.sliderRepeat.value()))
+        self.sliderRepeat.sliderReleased.connect(lambda: self.set_camera_parameter.emit(CAMERA_REPEAT, self.sliderRepeat.value()))
 
+        self.lineGain.setValidator(QIntValidator(self))
+        self.lineExposureTime.setValidator(QIntValidator(self))
+        self.sliderGain.valueChanged.connect(lambda: self.lineGain.setText(str(self.sliderGain.value())))
+        self.sliderGain.sliderReleased.connect(lambda: self.set_camera_parameter.emit(CAMERA_GAIN, self.sliderGain.value()))
+        self.sliderExposureTime.valueChanged.connect(lambda: self.lineExposureTime.setText(str(self.sliderExposureTime.value())))
+        self.sliderExposureTime.sliderReleased.connect(lambda: self.set_camera_parameter.emit(CAMERA_EXPOSURE_TIME, self.sliderExposureTime.value()))
         # Camera Capture
-        self.pushCapture.clicked.connect(lambda: self.para.set_parameter.emit(CAMERA_REQUEST_CAPTURE, self.sliderRepeat.value()))
-        self.pushStop.clicked.connect(lambda: self.para.set_parameter.emit(CAMERA_REQUEST_STOP, -999))
+        def set_value(slider, line):
+            if not line.text() == '':
+                slider.setValue(int(line.text()))
+        self.lineGain.textEdited.connect(lambda: set_value(self.sliderGain, self.lineGain))
+        self.lineGain.returnPressed.connect(lambda: self.set_camera_parameter.emit(CAMERA_GAIN, int(self.lineGain.text())))
+        self.lineExposureTime.textEdited.connect(lambda: set_value(self.sliderExposureTime, self.lineExposureTime))
+        self.lineExposureTime.returnPressed.connect(lambda: self.set_camera_parameter.emit(CAMERA_EXPOSURE_TIME, int(self.lineExposureTime.text())))
+
+        self.pushCapture.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_REQUEST_CAPTURE, self.sliderRepeat.value()))
+        self.pushStop.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_REQUEST_STOP, -999))
 
         # Image rotation
-        self.pushRotateLeft.clicked.connect(lambda: self.para.set_parameter(CAMERA_ROTATION_LEFT, 1))
-        self.pushRotateRight.clicked.connect(lambda: self.para.set_parameter(CAMERA_ROTATION_RIGHT, 1))
-        self.pushFlipUpDown.clicked.connect(lambda: self.para.set_parameter(CAMERA_FLIP_UP_DOWN, 1))
-        self.pushFilpRightLeft.clicked.connect(lambda: self.para.set_parameter(CAMERA_FLIP_RIGHT_LEFT, 1))
+        self.pushRotateLeft.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_ROTATION_LEFT, 1))
+        self.pushRotateRight.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_ROTATION_RIGHT, 1))
+        self.pushFlipUpDown.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_FLIP_UP_DOWN, 1))
+        self.pushFilpRightLeft.clicked.connect(lambda: self.set_camera_parameter.emit(CAMERA_FLIP_RIGHT_LEFT, 1))
 
         # Screen Zoom
+        ### -> signal <-> slot 형식으로 바꿔야 함
         self.pushScreenDown.clicked.connect(lambda: self.blackberry.receive_request(ACTUATOR_REQUEST_GO_DOWN))
         self.pushScreenUp.clicked.connect(lambda: self.blackberry.receive_request(ACTUATOR_REQUEST_GO_UP))
 
@@ -231,14 +241,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.labelCamera.resize(self.frameCamera.width()-self.layoutMargin, self.frameCamera.height()-self.layoutMargin)
         self.para.intensity_line = [round(self.labelCamera.width()/2), round(self.labelCamera.height()/2)]
 
-    def set_variable(self, idx, value):
-        if idx == CAMERA_FPS:
-            if value != self.para.fps:
-                mutex.acquire()
-                while not self.queue_for_analyze.empty():
-                    self.queue_for_analyze.get()
-                mutex.release()
-        self.para.set_variable(idx, value)
+    def set_parameter(self, idx, value):
+        mutex.acquire()
+        while not self.return_queue.empty():
+            self.return_queue.get()
+        self.para.set_parameter(idx, value)
+        mutex.release()
 
     def setup_module(self):
         if self.dialog: return
@@ -261,10 +269,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.labelCalibrationPixmap.setPixmap(self.iconGreenLight.pixmap(self.iconSize))
 
             if self.para.cam_conn:
+                self.set_camera_parameter.emit(CAMERA_REQUEST_STREAM, 1)
+                self.lineGain.setText(str(self.para.gain))
+                self.lineExposureTime.setText(str(self.para.exp_time))
                 self.blueberry.working = True
                 self.blueberry.start()
             
             if self.para.ctl_conn:
+                self.labelStatusController.setText("Connected")
                 self.blackberry.working = True
                 self.blackberry.start()
                 self.blackberry.setPriority(QThread.IdlePriority)
@@ -328,22 +340,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plot_profile_size = [self.frameProfile.width(), self.frameProfile.height()]
         self.plot_beamx_size = [self.frameProfileX.width(), self.frameProfileX.height()]
         self.plot_beamy_size = [self.frameProfileY.width(), self.frameProfileY.height()]
-        
         self.para.stream_size = [self.frameCamera.width(), self.frameCamera.height()]
 
-        if self.labelCamera is not None:
-            self.labelCamera.resize(self.para.stream_size[0], self.para.stream_size[1])
-            self.blueberry.resized_pixel = [self.labelCamera.width(), self.labelCamera.height()]
-        if self.profile is not None:
-            self.profile.resize(self.plot_profile_size[0], self.plot_profile_size[1])
-        if self.beamx is not None:
-            self.beamx.resize(self.plot_beamx_size[0], self.plot_beamx_size[1])
-        if self.beamy is not None:
-            self.beamy.resize(self.plot_beamy_size[0], self.plot_beamy_size[1])
-
+        if len(self.previous) > 0:
+            if self.previous != self.main_size and abs(self.previous[0] - self.main_size[0]) > 10:
+                self.labelCamera.resize(self.para.stream_size[0], self.para.stream_size[1])
+        
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Message', 'Are you sure to quit?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
+            self.blueberry.working = False
+            self.blackberry.working = False
             self.blueberry.stop()
             self.blackberry.stop()
             self.strawberry.stop()
@@ -409,6 +416,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             qImg = QImage(image.data, width, height, width, QImage.Format_Grayscale8)
         
         pixmap = QPixmap.fromImage(qImg)
+        pixmap = pixmap.scaled(self.labelCamera.width(), self.labelCamera.height())
             
         painter = QPainter(pixmap)
         painter.setPen(QPen(QColor(3, 252, 127), 1.5, Qt.DashLine))
@@ -424,7 +432,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.labelCamera.setPixmap(pixmap)
 
         self.liveXCurve.setData(xbin, xhist)
-        self.liveYCurve.setData(-np.array(yhist).tolist(), ybin)
+        self.liveYCurve.setData((-np.array(yhist)).tolist(), ybin)
 
         self.plotLiveX.setLimits(xMin=min(xbin), xMax=max(xbin))
         self.plotLiveY.setLimits(yMin=min(ybin), yMax=max(ybin))
@@ -432,6 +440,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         arr = image.reshape(-1)
         hist, bin = np.histogram(arr, np.arange(0,257))
         histogram = pg.BarGraphItem(x=bin[:-1], height=hist, width = 1, brush=(107,200,224))
+        self.plotPVHist.clear()
         self.plotPVHist.addItem(histogram)
         self.plotPVHist.setLogMode(False, True)
         self.plotPVHist.setXRange(-1,256)
@@ -501,13 +510,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plotProfileY.addLine(x=None, y=center_real[1], pen=pg.mkPen(color=(29, 36, 229), width=2))
         #self.plotProfileY.plot([center_real[1] for i in range(len(ybin))], ybin, pen=pg.mkPen(color=(29, 36, 229), width=2))
 
-        arr = image.reshape(-1)
-        hist, bin = np.histogram(arr, np.arange(0,257))
-        histogram = pg.BarGraphItem(x=bin[:-1], height=hist, width = 1, brush=(107,200,224))
-        self.plotPVHist.addItem(histogram)
-        self.plotPVHist.setLogMode(False, True)
-        self.plotPVHist.setXRange(-1,256)
+        #arr = image.reshape(-1)
+        #hist, bin = np.histogram(arr, np.arange(0,257))
+        #histogram = pg.BarGraphItem(x=bin[:-1], height=hist, width = 1, brush=(107,200,224))
+        ##self.plotPVHist.addItem(histogram)
+        ##self.plotPVHist.setLogMode(False, True)
+        #self.plotPVHist.setXRange(-1,256)
 
+        self.logger.info("Anlaysis is done.")
         self.save_pretty_plot(element)
 
     # UserWarning: Starting a Matplotlib GUI outside of the main thread will likely fail.
