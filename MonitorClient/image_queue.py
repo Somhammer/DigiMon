@@ -157,29 +157,33 @@ def analyze_image(analyze_queue, return_queue):
                 ybin = ybin.get()
             else:
                 max_intensity = image.max()
-                image = np.where(image <= max_intensity*threshold, 0, g_image)
+                image = np.where(image <= max_intensity*threshold, 0, image)
+                image_center = np.array([nxpixel//2, nypixel//2])
 
                 # Calibration과 ROI 선택 처리
+                pixel_per_mm = np.array(para.pixel_per_mm)
+
                 if para.calibrated:            
                     p1, p2, p3, p4 = para.cal_dest_points.values()
                     p1 = np.array(p1)
-                    coordinate_center = p1[0] - abs(p1[1]) / np.array(para.pixel_per_mm)
+                    coordinate_center = p1[0] - abs(p1[1]) / pixel_per_mm
                 else:
                     coordinate_center = image_center
 
                 if para.roi_sel:
                     image = util.slice_image(para, image)
                     coordinate_center = coordinate_center - np.array(para.roi[0])
+                    nypixel, nxpixel = image.shape
 
                 numerator = np.array([0,0], dtype=np.int64)
                 denominator = np.float64(0)
 
                 y_indices, x_indices = np.meshgrid(np.arange(nypixel), np.arange(nxpixel), indexing='ij')
 
-                mask = g_image >= max_intensity * threshold
-                numerator[0] = np.sum(g_image[mask] * x_indices[mask])
-                numerator[1] = np.sum(g_image[mask] * y_indices[mask])
-                denominator = np.sum(g_image[mask])
+                mask = image >= max_intensity * threshold
+                numerator[0] = np.sum(image[mask] * x_indices[mask])
+                numerator[1] = np.sum(image[mask] * y_indices[mask])
+                denominator = np.sum(image[mask])
 
                 if denominator > 0:
                     center_pixel = numerator / denominator
@@ -192,8 +196,8 @@ def analyze_image(analyze_queue, return_queue):
 #                center_pixel = np.array(round(center_pixel[0]), round(center_pixel[1]))
 
                 distances_from_center = np.stack([x_indices - coordinate_center[0], y_indices - coordinate_center[1]])
-                numerator[0] = np.sum(g_image[mask] * np.power((distances_from_center[0][mask] - center_pixel[0])/pixel_per_mm[0],2))
-                numerator[1] = np.sum(g_image[mask] * np.power((distances_from_center[1][mask] - center_pixel[1])/pixel_per_mm[1],2))
+                numerator[0] = np.sum(image[mask] * np.power((distances_from_center[0][mask] - center_pixel[0])/pixel_per_mm[0],2))
+                numerator[1] = np.sum(image[mask] * np.power((distances_from_center[1][mask] - center_pixel[1])/pixel_per_mm[1],2))
 
                 rms_beam_size = 2 * np.sqrt(numerator/denominator)
                 
@@ -203,11 +207,11 @@ def analyze_image(analyze_queue, return_queue):
                 yhist = normalized_image.sum(axis=1)  
 
                 # xbin과 ybin 계산
-                xminimum = -coordinate_center[0]/para.pixel_per_mm[0]  # mm
-                yminimum = -coordinate_center[1]/para.pixel_per_mm[1]  # mm
+                xminimum = -coordinate_center[0]/pixel_per_mm[0]  # mm
+                yminimum = -coordinate_center[1]/pixel_per_mm[1]  # mm
 
-                xbin = np.linspace(xminimum, xminimum + (nxpixel-1)/para.pixel_per_mm[0], nxpixel)
-                ybin = np.linspace(yminimum, yminimum + (nypixel-1)/para.pixel_per_mm[1], nypixel)
+                xbin = np.linspace(xminimum, xminimum + (nxpixel-1)/pixel_per_mm[0], nxpixel)
+                ybin = np.linspace(yminimum, yminimum + (nypixel-1)/pixel_per_mm[1], nypixel)
 
             gauss = lambda x, a, b, c: a*np.exp(-2*(x-b)**2/c**2)
             try:
