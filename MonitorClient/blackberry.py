@@ -40,9 +40,9 @@ class Blackberry(QThread):
 
         self.status_signal.connect(self.main.actuator_status)
 
-    def connection_device(self, address=RPI_ADDR):
+    def connect_device(self):
         if self.para.ctl_conn: return
-        ip = address.split(":")[0]
+        ip = self.para.server_ip.split(":")[0]
         os.environ['EPICS_CA_ADDR_LIST'] = str(ip)
         os.environ['EPICS_CA_AUTO_ADDR_LIST'] = 'NO'
 
@@ -50,17 +50,21 @@ class Blackberry(QThread):
             self.context = Context()
             for i in range(NUMBER_OF_MONITORS):
                 if f'{PV_NAME_RANK1.lower()}{i}' == self.para.monitor_id.lower():
+                    print(i)
                     self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:REQUEST')[0]
                     self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status'] = self.context.get_pvs(f'{PV_NAME_RANK0}:{PV_NAME_RANK1}{i}:STATUS')[0]
 
                     time.sleep(2)
-
+                    print("MELONA")
                     self.pvs['request'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_request']
                     self.pvs['status'] = self.__dict__[f'{PV_NAME_RANK1.lower()}{i}_status']
-        
-            message = f"INFO EPICS server is connected."
+            
+            print("MELONA")
+            print(f"{self.pvs['status'].read()}")
+            #message = f"INFO EPICS server is connected. {self.para.monitor_id} Status: {self.status_to_text(self.pvs['status'].read().data[0])}"
+            message = f"INFO MELONA"
             self.para.ctl_conn = True
-
+            print("MELONA")
         except:
             message = "ERROR Connection is failed."
             self.para.ctl_conn = False
@@ -74,33 +78,37 @@ class Blackberry(QThread):
     async def run(self):
         if self.para.monitor_id != '':
             if any(i == self.request for i in [ACTUATOR_REQUEST_GO_UP, ACTUATOR_REQUEST_GO_DOWN]) and self.request != self.previous_request:
-                self.pvs['request'].write(self.request)                
+                self.pvs['request'].write(self.request)
                 t = 0
                 while t <= 6:
                     self.send_status()
                     t += 2
                     time.sleep(2)
                 self.previous_request = self.request
+            elif self.request == ACTUATOR_REQUEST_STATUS:
+                self.send_status()
 
     def stop(self):
         self.working = False
         self.quit()
-        self.wait(2000)
+        self.wait(1000)
+
+    def status_to_text(self, status):
+        if status == ACTUATOR_UP:
+            text = "Screen Up"
+        elif status == ACTUATOR_DOWN:
+            text = "Screen Down"
+        elif status == ACTUATOR_GOES_UP:
+            text = "Go up"
+        elif status == ACTUATOR_GOES_DOWN:
+            text = "Go down"
+        elif status == ACTUATOR_ERROR:
+            text = "Error"
+        return text
 
     def send_status(self):
         self.pvs['request'].write(ACTUATOR_REQUEST_STATUS)
-        status = self.pvs['status'].read().data[0]
-        message = ''
-        if status == ACTUATOR_UP:
-            message = "Screen monitor is up."
-        elif status == ACTUATOR_DOWN:
-            message = "Screen monitor is down."
-        elif status == ACTUATOR_GOES_UP:
-            message = "Screen monitor is goes up."
-        elif status == ACTUATOR_GOES_DOWN:
-            message = "Screen monitor is goes down."
-        elif status == ACTUATOR_ERROR:
-            message = "An error occured."
+        message = self.status_to_text(self.pvs['status'].read().data[0])
         self.status_signal.emit(message)
 
     @Slot(int)

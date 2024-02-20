@@ -1,12 +1,14 @@
+import os
 from dataclasses import dataclass, field
 import numpy as np
+
+BASE_PATH = os.path.abspath(os.path.dirname(__file__))
 
 CONNECT_CAMERA = 10001
 CONNECT_CONTROLLER = 10002
 
 # BPM
 NUMBER_OF_MONITORS = 2
-RPI_ADDR = '10.1.30.202'
 
 ### PV NAMES
 PV_NAME_RANK0 = 'BPM'
@@ -28,6 +30,10 @@ ACTUATOR_GOES_DOWN = 4
 ACTUATOR_ERROR = -1
 
 # CAMERA
+CALIBRATE = 80001
+SLICE = 80002
+FILTER = 80003
+
 ### CAMERA STATUS
 CAMERA_REQUEST_NOTHING = 20000
 CAMERA_REQUEST_STREAM = 20001
@@ -47,6 +53,8 @@ CAMERA_ROTATION_LEFT = 30009
 CAMERA_ROTATION_RIGHT = 30010
 CAMERA_FLIP_RIGHT_LEFT = 30011
 CAMERA_FLIP_UP_DOWN = 30012
+CAMERA_ROTATION_CUSTOM_LEFT = 30013
+CAMERA_ROTATION_CUSTOM_RIGHT = 30014
 
 CAMERA_SHOW = 40001
 CAMERA_EXIT = 40002
@@ -58,8 +66,7 @@ PROFILE_SCREEN = 50004
 XSIZE_SCREEN = 50005
 YSIZE_SCREEN = 50006
 
-NO_FILTER = 60000
-BKG_SUBSTRACTION = 60001
+NO_FILTER = 60001
 GAUSSIAN_FILTER = 60002
 MEDIAN_FILTER = 60003
 BILATERAL_FILTER = 60004
@@ -67,6 +74,10 @@ BILATERAL_FILTER = 60004
 # Return Queue
 STREAM = 70000
 ANALYSIS = 70001
+
+# Save Image
+RAW_IMAGE = 80000
+ANALYZED_IMAGE = 80001
 
 @dataclass
 class Parameters:
@@ -100,7 +111,6 @@ class Parameters:
     stream_size: list = field(default_factory=list)
     intensity_line: list = field(default_factory=list)
 
-    calibration_angle: float = 0.0
     cal_target_points: dict = field(default_factory=dict) # {'PointX':[[xpixel, ypixel],[xreal, yreal]]} 
     cal_dest_points: dict = field(default_factory=dict)
     transform_matrix: np.array = field(default_factory=np.array)
@@ -127,11 +137,9 @@ class Parameters:
     def __init__(self):
         self.stream_size: list = [0,0]
         self.intensity_line: list = [-1,-1]
-        self.cal_target_points = {'Point1':[[0,0],[0,0]], 'Point2':[[0,0],[0,0]], 'Point3':[[0,0],[0,0]], 'Point4':[[0,0],[0,0]]}
-        self.cal_dest_points = {'Point1':[[0,0],[0,0]], 'Point2':[[0,0],[0,0]], 'Point3':[[0,0],[0,0]], 'Point4':[[0,0],[0,0]]}
         self.transform_matrix = np.array([])
         self.pixel_per_mm = [1.0,1.0]
-        self.roi = [[0,0],[0,0],[0,0],[0,0]]
+        self.roi = [[0,0],[0,0]]
         self.filter_para = {}
         self.coordinate_center = [0,0]
 
@@ -145,10 +153,16 @@ class Parameters:
         elif idx == CAMERA_REPEAT:
             self.repeat = value
         elif idx == CAMERA_ROTATION_RIGHT:
-            self.rotation += 90
+            self.rotation += -90
             self.rotation = self.rotation % 360
         elif idx == CAMERA_ROTATION_LEFT:
-            self.rotation += 270
+            self.rotation += 90
+            self.rotation = self.rotation % 360
+        elif idx == CAMERA_ROTATION_CUSTOM_RIGHT:
+            self.rotation += -value
+            self.rotation = self.rotation % 360
+        elif idx == CAMERA_ROTATION_CUSTOM_LEFT:
+            self.rotation += value
             self.rotation = self.rotation % 360
         elif idx == CAMERA_FLIP_UP_DOWN:
             self.flip_ud += 1

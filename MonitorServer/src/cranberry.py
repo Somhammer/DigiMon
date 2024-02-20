@@ -13,6 +13,7 @@ if not DEVMODE:
 log_queue = queue.Queue()
 
 class ProfileMonitor(PVGroup):
+    CONTROl = pvproperty(value=0, doc='Adjust the screen position and monitor its status')
     REQUEST = pvproperty(value=0, doc='Request order to actuator')
     STATUS = pvproperty(value=0, doc='PV status')
 
@@ -47,15 +48,15 @@ class ProfileMonitor(PVGroup):
             if not self.connected: self.check_connection()
             if self.connected:
                 request = self.request_queue.get()
-                if request == REQUEST_STATUS:
+                if request == ACTUATOR_REQUEST_STATUS:
                     self.update_status(request)
                 else:
                     if DEVMODE:
                         continue
                     else:
-                        if request == REQUEST_GO_UP:
+                        if request == ACTUATOR_REQUEST_GO_UP:
                             GPIO.output(self.gpio['RELAY'], False)
-                        elif request == REQUEST_GO_DOWN:
+                        elif request == ACTUATOR_REQUEST_GO_DOWN:
                             GPIO.output(self.gpio['RELAY'], True)
 
     def update_status(self, request):
@@ -64,7 +65,7 @@ class ProfileMonitor(PVGroup):
             self.status_queue.put(status)
             log_queue.put(f"INFO:Develpment mode - Monitor{self.number} Status is alwasy ACTUATOR_ERROR(-1).")
         else:
-            if request == REQUEST_NOTHING: return
+            if request == ACTUATOR_REQUEST_NOTHING: return
             try:
                 upper_status = GPIO.input(self.gpio['UPPER_SWITCH'])
                 lower_status = GPIO.input(self.gpio['LOWER_SWITCH'])
@@ -150,6 +151,3 @@ class Cranberry(PVGroup):
                 elif level == "WARNING": self.logger.warning(message)
                 elif level == "ERROR": self.logger.error(message)
                 elif level == "CRITICAL": self.logger.critical(message)
-
-
-

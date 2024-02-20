@@ -2,6 +2,8 @@ Digital Camera Monitoring System
 -------------
 Digital Camera Monitoring System(이하 DigiMon)은 카메라를 이용해 빔의 transverse profile을 측정하는 프로그램 입니다.
 
+DigiMon은 OpenCV와 Basler SDK를 지원합니다.
+
 한국어 설명서: [Korean](https://github.com/Somhammer/DigiMon/blob/master/README_KR.md)
 
 영어 설명서: [English](https://github.com/Somhammer/DigiMon/blob/master/README.md)
@@ -9,25 +11,19 @@ Digital Camera Monitoring System(이하 DigiMon)은 카메라를 이용해 빔�
 ### 다운로드와 설치
 최신 버전의 프로그램은 저장소의 [release](https://github.com/Somhammer/DigiMon/releases) 란에서 받을 수 있습니다.
 
-만약 운영체제에 맞게 다운로드한 다음 이용할 카메라 회사(Basler, Allied Vision)의 소프트웨어(Pylon, Vimba)를 설치하면 프로그램을 바로 이용할 수 있습니다. 
+만약 운영체제에 맞게 다운로드한 다음 이용할 카메라 회사(Basler)의 소프트웨어(Pylon)를 설치하면 프로그램을 바로 이용할 수 있습니다. 
 
 소스파일을 받은 경우에는 여러 라이브러리들이 추가로 필요합니다.
 
 #### Pylon
-DigiMon은 Pylon 6.2.0을 이용했으며 각자의 운영체제에 맞게 [다운로드](https://www.baslerweb.com/ko/sales-support/downloads/software-downloads/) 후 설치를 진행하면 됩니다.
+DigiMon은 Pylon 6.2.0 이상 버전의 설치가 필요합니다. 각자의 운영체제에 맞게 [다운로드](https://www2.baslerweb.com/ko/downloads/software-downloads/) 후 GigE 카메라 소프트웨어를 설치하면 됩니다.
 
 그리고 리눅스의 경우 PYLON_ROOT 환경변수를 등록해야 합니다. 변수의 값은 Pylon이 설치된 경로입니다(예시: /home/seohyeon/pylon)
-#### Vimba
-DigiMon은 Vimba 5.0을 이용했으며 각자의 운영체제에 맞게 [다운로드](https://www.alliedvision.com/en/products/vimba-sdk/#c1497) 후 설치를 진행하면 됩니다.
 
-그리고 윈도우의 경우 VIMBA_HOME 환경변수를 등록해야 합니다. 변수의 값은 Vimba가 설치된 경로입니다.(예시: C:\Program Files\Allied Vision\Vimba_5.0)
-
-
-두 소프트웨어가 없어도 프로그램은 실행되지만 해당 회사의 GigE 카메라 연결이 되지 않습니다. 필요한 회사의 소프트웨어를 반드시 설치해주기 바랍니다.
+소프트웨어가 없어도 프로그램은 실행되지만 Basler 사의 GigE 카메라 연결이 되지 않습니다. 필요한 회사의 소프트웨어를 반드시 설치해주기 바랍니다.
 
 #### 소스파일 설치
-만약 소스파일을 다운로드 받아서 이용한다면 Python3.8 이상이 요구됩니다. 그리고 앞의 경우와 마찬가지로 pylon과 vimba가 필요합니다.
-또한 다음과 같은 라이브러리들이 추가로 필요합니다.
+만약 소스파일을 다운로드 받아서 이용한다면 Python3.8 이상이 요구됩니다. 그리고 아래 라이브러리들이 추가로 필요합니다.
 
 - PySide6 >= 6.1.2
 - pyqtgraph >= 0.12.2
@@ -38,13 +34,25 @@ DigiMon은 Vimba 5.0을 이용했으며 각자의 운영체제에 맞게 [다운
 - PyYAML >= 5.3.1
 - cv2 >= 4.5.3.56
 - pypylon >= 1.7.2.dev4
-- VimbaPython >= 1.1.0
 
 위 라이브러리들을 pip을 이용해 설치한 뒤 python DigiMon.py를 이용해 실행할 수 있습니다.
 
 ### 둘러보기
 #### 메인 화면
 <img src="figs/mainwindow.png" width="80%" height="80%" title="Main Window"></img>
+
+기본적으로 DigiMon은 다음과 같이 사용합니다. 우선 Control 박스의 Connection 버튼을 눌러 카메라와 스크린 컨트롤러를 연결합니다. 그러면 상태 박스의 빨간색 LED 등이 초록색으로 점멸되고 동시에 실시간 화면에 카메라가 촬영하는 영상이 초록색 십자선과 함께 표시됩니다. 초록색 십자선에 있는 픽셀들의 밝기 값은 화면의 위, 오른쪽에 있는 그래프에 표시됩니다. Capture 버튼을 누르면 이미지를 촬영하고 분석 과정을 거친 후 화면 오른쪽의 2차원 그래프에 표시됩니다. 만약 캘리브레이션을 수행했다면 그래프의 각 위치는 픽셀 좌표계가 아닌 실제 좌표계로 표시됩니다. 동시에 2차원 그래프의 아래에 이미지의 중심 좌표 및 빔 크기가 표시됩니다. 화면과 2차원 그래프의 아래에는 밝기값들에 대한 실시간 히스토그램이 표시됩니다.
+
+#### 카메라, 컨트롤러 연결
+
+<img src="figs/connection.png" width="80%" height="80%" title="Main Window"></img>
+
+
+Connection 버튼을 누르면 위와 같은 창이 나타납니다.
+
+
+#### 이미지 처리
+
 
 1. 카메라 화면
 
@@ -75,11 +83,6 @@ Control 패널 안에서 영상의 프레임과 사진을 찍을 때 몇회 반�
 프로파일 패널은 촬영한 사진들의 목록이 표로 기록되며 Emittance 버튼을 눌러 촬영한 사진들을 이용해 emittance를 측정할 수 있습니다.
 Open 버튼을 누르면 이전에 저장한 사진을 불러올 수 있습니다.
 또한 사진 촬영 당시의 전류를 표에서 수정하거나 사진 촬영 직전에 Current 칸을 수정해 기록할 수 있습니다.
-
-- 카메라가 연결 후의 화면 예시
-
-<img src="figs/main.gif" width="70%" height="70%" title="Setup Window"></img>
-
 
 #### 셋업
 
@@ -150,14 +153,3 @@ Open을 통해 Calibration 용 이미지를 불러오면 사진 아래의 회전
 <img src="figs/Calibration-move.gif" width="30%" height="30%" title="ROI"></img>
 
 그리고 Calibration까지 마치고 Ok 버튼을 누르면 메인 화면에 카메라 영상이 나타나게 됩니다.
-
-#### 에미턴스
-
-<img src="figs/emittance.png" width="70%" height="70%" title="ROI"></img>
-
-에미턴스 창에서는 저장된 사진들로 에미턴스를 계산할 수 있습니다. 
-먼저 좌측 상단의 Select 콤보 박스에서 사용할 방법을 고릅니다(현재는 quadrupole scan만 구현). 그러면 다음과 같이 입력해야 할 변수들과 그래프가 나타나게 됩니다.
-
-<img src="figs/quadscan.png" width="70%" height="70%" title="ROI"></img>
-
-변수들을 다 입력하고 Run 버튼을 누르면 emittance와 twiss parameter들이 계산됩니다. 만약 계산에 실패하면 아래 로그창에 실패 메세지가 뜨고 값들은 전부 0.0으로 계산됩니다.

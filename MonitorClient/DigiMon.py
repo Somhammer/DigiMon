@@ -7,7 +7,8 @@
 # -------------------------------------------------------
 
 # coding: UTF-8
-
+from queue import Queue
+from threading import Thread
 import multiprocessing
 import os, sys
 from multiprocessing import Process, Queue, Lock
@@ -16,9 +17,11 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
-BASE_PATH = os.path.abspath(os.path.dirname(__file__))
+from variables import BASE_PATH
 sys.path.append(BASE_PATH)
 
+#os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+#os.environ["CUDA_VISIBLE_DEVICES"]="0"
 os.environ['EPICS_CA_AUTO_ADDR_LIST'] = 'NO'
 
 from mainwindow import *
@@ -31,10 +34,10 @@ para = Parameters()
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     #app = pg.mkQApp()
-    stream_queue = Queue()
+    stream_input_queue = Queue()
     # Queue for Image Stream
     # Element: Image array
-    analysis_queue = Queue()
+    analysis_input_queue = Queue()
     # Queue for analyze
     # Element type: List
     # Element[0] = Image array
@@ -43,7 +46,7 @@ if __name__ == '__main__':
     # Element[3] = Original pixel size [x, y]
     # Element[4] = Pixel size in screen [x, y]
     # Element[5] = Captured image(True) or Streaming image(False)
-    return_queue = Queue()
+    stream_output_queue = Queue()
     # Intensity histogram queue
     # Element type: List
     # If input image is captured image:
@@ -57,27 +60,35 @@ if __name__ == '__main__':
     # Element[5, 6] = Maximum intensity bin location and beam size for each axis
     # Variable for captured image
     # Element[7, 8] = Fitting curve for each axis
+    analysis_output_queue = Queue()
 
     app = QApplication(sys.argv)
-    w = MainWindow(para, stream_queue, analysis_queue, return_queue)
+    w = MainWindow(para, stream_input_queue, analysis_input_queue, stream_output_queue, analysis_output_queue)
 
-    stream_proc = Process(target=stream_image, args=(stream_queue, return_queue), daemon=True)
-    analysis_proc = Process(target=analyze_image, args=(analysis_queue, return_queue), daemon=True)
-    stream_proc.start()
-    analysis_proc.start()
+    #Thread(target=stream_image, args=(stream_input_queue, stream_output_queue), daemon=True).start()
+    #Thread(target=analyze_image, args=(analysis_input_queue, analysis_output_queue), daemon=True).start()
+
+    stream = Process(target=stream_image, args=(stream_input_queue, stream_output_queue), daemon=True)
+    stream.start()
+    analyze = Process(target=analyze_image, args=(analysis_input_queue, analysis_output_queue), daemon=True)
+    analyze.start()
 
     if app.exec() == 0:
-        mutex.acquire()
-        while not stream_queue.empty():
-            stream_queue.get()
-        while not analysis_queue.empty():
-            analysis_queue.get()
-        while not return_queue.empty():
-            return_queue.get()
-        stream_queue.put(['EXIT'])
-        analysis_queue.put(['EXIT'])
-        mutex.release()
+        stream_input_queue.put(['EXIT'])
+        analysis_input_queue.put(['EXIT'])
+        import time
+        time.sleep(3)
 
-        #stream_proc.join()
-        #analysis_proc.join()
-        #sys.exit(0)
+        stream.join()
+        """
+        while not stream_input_queue.empty():
+            stream_input_queue.get()
+        while not analysis_input_queue.empty():
+            analysis_input_queue.get()
+        while not stream_output_queue.empty():
+            stream_output_queue.get()
+        while not analysis_output_queue.empty():
+            analysis_output_queue.get()
+        """
+    sys.exit(0)
+    #sys.exit(app.exec())

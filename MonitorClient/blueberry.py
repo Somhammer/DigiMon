@@ -6,7 +6,7 @@
 # This class controls the network camera.
 #   Functions
 #   1. It connects between the client and the network camera.
-#   2. It captures images and send them to stream_queue or analyze_queue.
+#   2. It captures images and send them to stream_input_queue or analyze_queue.
 # -------------------------------------------------------
 
 import os, sys
@@ -37,53 +37,70 @@ import utilities as util
 from DigiMon import mutex
 
 class Blueberry(QThread):
-    watch_signal = Signal(bool)
     thread_logger_signal = Signal(str, str)
-    save_signal = Signal(str)
+    save_signal = Signal(list, int)
 
-    def __init__(self, para, main, stream_queue, analysis_queue, return_queue):
+    def __init__(self, para, main, stream_input_queue, analysis_input_queue):
         super().__init__()
         self.name = "Network Camera"
 
         self.para = para
         self.main = main
-        self.stream_queue = stream_queue
-        self.analysis_queue = analysis_queue
-        self.return_queue = return_queue
+        self.stream_input_queue = stream_input_queue
+        self.analysis_input_queue = analysis_input_queue
 
         self.para.cam_conn = False
 
         self.camera = None
         self.prev_time = 0 # Only for OpenCV
-        self.count = 1 # Image Taking
+        self.count = 0 # Image Taking
         self.fps = 20
 
+        self.converter = None # Only for Pylon
+
         self.working = True
+        self.current = str(0.0)
 
         self.idx = None
         self.frame = None
 
         self.repeat = None
 
-        self.outdir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'output', datetime.datetime.today().strftime('%y%m%d'))
-        if not os.path.exists(self.outdir):
-            os.makedirs(self.outdir)
-        if not os.path.exists(os.path.join(self.outdir, 'image')):
-            os.makedirs(os.path.join(self.outdir, 'image'))
-        if not os.path.exists(os.path.join(self.outdir, 'profile')):
-            os.makedirs(os.path.join(self.outdir, 'profile'))
-        if not os.path.exists(os.path.join(self.outdir, 'emittance')):
-            os.makedirs(os.path.join(self.outdir, 'emittance'))
-
         self.set_action()
 
+    def clear_queue(self):
+        mutex.acquire()
+        while not self.analysis_input_queue.empty():
+            self.analysis_input_queue.get()
+        while not self.stream_input_queue.empty():
+            self.stream_input_queue.get()
+        mutex.release()
+
     def set_action(self):
-        self.watch_signal.connect(self.main.stopwatch)
         self.thread_logger_signal.connect(self.main.receive_log)
         self.save_signal.connect(self.main.save_image)
 
     def connect_device(self):
-        if not "OpenCV" in self.para.sdk:
+        if "OpenCV" in self.para.sdk:
+            self.camera, message, self.para.cam_conn = self.connect_opencv()
+        elif "Pylon" in self.para.sdk:
+            self.camera, message, self.para.cam_conn = self.connect_pylon()
+        
+        return message
+
+    def connect_opencv(self):
+        try:
+            camera = cv2.VideoCapture(self.para.url)
+            if not camera.isOpened():
+                return None, f"ERROR Camera won't be opened, {self.para.url}", False
+            return camera, "INFO Connection successful with OpenCV.", True
+        except Exception as e:
+            return None, f"ERROR Connection failed with OpenCV. Exception: {str(e)}", False
+        
+    def connect_pylon(self):
+        if not import_pylon:
+            return None, 'ERROR Please install pylon module.', False
+        try:
             import re
             p = re.compile(r'[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+')
             result = p.search(self.para.url)
@@ -92,123 +109,88 @@ class Blueberry(QThread):
             else:
                 ip_address = ''
 
-        if "OpenCV" in self.para.sdk:
-            try:
-                img_resp = cv2.VideoCapture(self.para.url)
-                if not img_resp.isOpened():
-                    message = f"ERROR Camera won't be opened, {self.para.url}"
-                    self.para.cam_conn = False
-                else:
-                    message = 'INFO Connection successful'
-                    self.para.cam_conn = True
-            except:
-                message = 'ERROR Connection is failed'
-                self.para.cam_conn = False
-        elif "Pylon" in self.para.sdk:
-            if not import_pylon:
-                message = 'ERROR Please install pylon module'
-                self.para.cam_conn = False
-            else:
-                self.converter = pylon.ImageFormatConverter()
-                # Camera: ace acA1600-20gm
-                # Supported pixel format: Mono 8, Mono 12, Mono 12 Packed, YUV 4:2:2 Packed, YUV  4:2:2 (YUYV) Packed
-                self.converter.OutputPixelFormat = pylon.PixelType_Mono8
-                self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+            self.converter = pylon.ImageFormatConverter()
+            # Camera: ace acA1600-20gm
+            # Supported pixel format: Mono 8, Mono 12, Mono 12 Packed, YUV 4:2:2 Packed, YUV  4:2:2 (YUYV) Packed
+            self.converter.OutputPixelFormat = pylon.PixelType_Mono8
+            self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
+            
+            factory = pylon.TlFactory.GetInstance()
+            ptl = factory.CreateTl('BaslerGigE')
+            empty_camera_info = pylon.DeviceInfo()
+            empty_camera_info.SetPropertyValue('IpAddress', ip_address)
+            #camera_info = factory.CreateTl('BaslerGigE').CreateDeviceInfo()
+            #camera_info.SetPropertyValue('PersistentIP', 'True')
+            #camera_info.SetPropertyValue('DHCP', 'False')
+            #camera_info.SetPropertyValue('IpAddress', ip_address)
+            #camera_info.SetPropertyValue('SubnetMask', '255.255.255.0')
+            #camera_info.SetPropertyValue('DefaultGateway', '10.1.30.1')        
+            camera = pylon.InstantCamera(factory.CreateDevice(empty_camera_info))
+            if camera is None:
+                return None, f'ERROR There is no connected GigE camera.', False
 
-                #self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-                try:
-                    factory = pylon.TlFactory.GetInstance()
-                    ptl = factory.CreateTl('BaslerGigE')
-                    empty_camera_info = pylon.DeviceInfo()
-                    empty_camera_info.SetPropertyValue('IpAddress', ip_address)
-                    #camera_info = factory.CreateTl('BaslerGigE').CreateDeviceInfo()
-                    #camera_info.SetPropertyValue('PersistentIP', 'True')
-                    #camera_info.SetPropertyValue('DHCP', 'False')
-                    #camera_info.SetPropertyValue('IpAddress', ip_address)
-                    #camera_info.SetPropertyValue('SubnetMask', '255.255.255.0')
-                    #camera_info.SetPropertyValue('DefaultGateway', '10.1.30.1')                
-                    self.camera = pylon.InstantCamera(factory.CreateDevice(empty_camera_info))
-                    #self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
-                    if self.camera is None:
-                        message = f'ERROR There is no connected GigE camera.'
-                        self.para.cam_conn = False
-                    else:
-                        self.camera.Open()
-                        self.camera.AcquisitionFrameRateEnable.SetValue(True)
+            camera.Open()
+            camera.AcquisitionFrameRateEnable.SetValue(True)
+            #self.camera.AcquisitionMode.SetValue('Continuous')
+            camera.StartGrabbing()
 
-                        #self.camera.AcquisitionMode.SetValue('Continuous')
-
-                        message = f'INFO Using device, {self.camera.GetDeviceInfo().GetModelName()} at {self.camera.GetDeviceInfo().GetIpAddress()}'
-                        self.para.cam_conn = True
-                except:
-                    if self.camera is None:
-                        message = f'ERROR There is no connected GigE camera.'
-                    else:
-                        message = f'ERROR {self.camera.GetDeviceInfo().GetModelName()} connection is failed.'
-                    self.para.cam_conn = False
-        
-        return message
+            return camera, f'INFO Using device, {camera.GetDeviceInfo().GetModelName()} at {camera.GetDeviceInfo().GetIpAddress()}', True
+        except Exception as e:
+            return None, f'ERROR Connection is failed.', False
 
     def disconnect_device(self):
-        if "Pylon" in self.para.sdk:
-            self.camera.Close()
-        self.para.cam_conn = False
+        try:
+            if "OpenCV" in self.para.sdk:
+                self.camera.Close()
+                message = f"INFO {self.para.url} is successfully disconnected."
 
+            elif "Pylon" in self.para.sdk:
+                self.camera.Close()
+                message = f"INFO {self.camera.GetDeviceInfo().GetModelName()} is successfully disconnected."
+
+            self.para.cam_conn = False
+        except:
+            message = f"ERROR Disconnection is failed."
+
+        return message
+
+    def reconnect_device(self):
+        for i in range(5):
+            try:
+                self.connect_device()
+            except Exception as e:
+                pass
+            
+        if not self.para.cam_conn:
+            self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+            return False
+        return True
+            
     def run(self):
         while self.working:
             if not self.para.cam_conn or self.para.cam_request == CAMERA_REQUEST_NOTHING: continue
-            if self.para.cam_request == CAMERA_REQUEST_CAPTURE and self.count == 0:
-                self.watch_signal.emit(True)
-                mutex.acquire()
-                while not self.return_queue.empty():
-                    self.return_queue.get()
-                while not self.analysis_queue.empty():
-                    self.analysis_queue.get()
-                while not self.stream_queue.empty():
-                    self.stream_queue.get()
-                mutex.release()
-            
-            if self.para.cam_request == CAMERA_REQUEST_DISCONNECT: break
+            if self.para.cam_request == CAMERA_REQUEST_CAPTURE and self.count == 0: pass
+                #self.clear_queue()
+            if self.para.cam_request == CAMERA_REQUEST_DISCONNECT: 
+                self.disconnect_device()
+                break
 
             image = None
             if 'OpenCV' in self.para.sdk:
                 try:
-                    img_resp = cv2.VideoCapture(self.para.url)
+                    retval, tmp = self.camera.read()
+                    image = cv2.cvtColor(tmp, cv2.COLOR_BGR2GRAY)
                 except:
-                    connect = False
-                    for i in range(5):
-                        try:
-                            img_resp = cv2.VideoCapture(self.para.url)
-                            connect = True
-                            break
-                        except:
-                            pass
-                        
-                    if not connect: 
-                        self.para.cam_conn = False
-                        self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
-
-                gain = self.para.gain
-
-                retval, tmp = img_resp.read()
-                image = cv2.cvtColor(tmp, cv2.COLOR_BGR2GRAY)
+                    self.reconnect_device()
+                    if not self.para.cam_conn: break
 
             elif 'Pylon' in self.para.sdk:
                 try:
                     if not self.camera.IsGrabbing():
                         self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
                 except:
-                    connect = False
-                    for i in range(5):
-                        try:
-                            self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
-                            connect = True
-                        except:
-                            pass
-                    
-                    if not connect:
-                        self.para.cam_conn = False
-                        self.thread_logger_signal.emit('ERROR', str(f'Reconnection was failed. Streaming is stopped.'))
+                    self.reconnect_device()
+                    if not self.para.cam_conn: break
 
                 if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
                     minimum = self.camera.ExposureTimeRaw.Min
@@ -231,51 +213,34 @@ class Blueberry(QThread):
                         self.thread_logger_signal.emit('ERROR', str(f'Setting gain is failed.'))
 
                 if self.camera.IsGrabbing():
-                    result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
-                    if result.GrabSucceeded():
-                        image = self.converter.Convert(result)
-                        image = image.GetArray()
-                        result.Release()
+                    try:
+                        result = self.camera.RetrieveResult(100000, pylon.TimeoutHandling_ThrowException)
+                        if result.GrabSucceeded():
+                            image = self.converter.Convert(result)
+                            image = image.GetArray()
+                            result.Release()
+                    except:
+                        time.sleep(1)
 
-            if image is not None:
-                if self.para.cam_request == CAMERA_REQUEST_CAPTURE and self.count < self.para.repeat:
-                    if not os.path.exists(os.path.join(self.outdir, 'image',  'raw')):
-                        os.makedirs(os.path.join(self.outdir, 'image',  'raw'))
-                    if not os.path.exists(os.path.join(self.outdir, 'image', 'analyzed')):
-                        os.makedirs(os.path.join(self.outdir, 'image',  'analyzed'))
-                    imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{self.para.gain}.png"
-                    outname = os.path.join(self.outdir, 'image', 'raw', imagename)
-                    cv2.imwrite(outname, image)
-                    self.save_signal.emit(outname)
+            if image is None: continue
 
-                image = util.filter_image(self.para, image)
-                image = util.transform_image(self.para, image)
-                image = util.slice_image(self.para, image)
-                image = util.rotate_image(self.para, image)
-                
-                if self.para.cam_request == CAMERA_REQUEST_STREAM:
-                    self.stream_queue.put([image, self.para])
-                elif self.para.cam_request == CAMERA_REQUEST_CAPTURE:
-                    if self.count < self.para.repeat:
-                        self.thread_logger_signal.emit('INFO', str(f'Take a picture. {self.count + 1}'))
-                        imagename = f"{datetime.datetime.today().strftime('%H-%M-%S-%f')[:-3]}_Exp{self.para.exp_time}_Gain{self.para.gain}.png"
-                        outname = os.path.join(self.outdir, 'image', 'analyzed', imagename)
-                        cv2.imwrite(outname, image)
+            self.stream_input_queue.put([image, self.para])
+            if self.para.cam_request == CAMERA_REQUEST_CAPTURE:
+                if self.count < self.para.repeat:
+                    self.thread_logger_signal.emit('INFO', str(f'Take a picture. {self.count + 1}'))
+                    self.save_signal.emit(image.tolist(), RAW_IMAGE)
+                    self.analysis_input_queue.put([image, self.para])
+                    self.count += 1
+                elif self.count == self.para.repeat:
+                    self.count = 0
+                    self.para.set_parameter(CAMERA_REQUEST_STREAM)
 
-                        self.analysis_queue.put([image, self.para])
+            self.msleep(round(1.0/self.para.fps*1000))
 
-                        self.count += 1
-                    elif self.count == self.para.repeat:
-                        self.count = 0
-                        self.para.set_parameter(CAMERA_REQUEST_STREAM)
-                        self.watch_signal.emit(False)
-
-                self.msleep(round(1.0/self.para.fps*1000))
-    
     def stop(self):
         self.working = False
-        self.sleep(1)
         self.quit()
+        self.wait(1000)
 
     def take_a_picture(self, image):
         # It is only used for setup.
@@ -309,6 +274,7 @@ class Blueberry(QThread):
             try:
                 if self.camera.IsGrabbing():
                     self.camera.StopGrabbing()
+                    time.sleep(0.2)
                 self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
                 
                 if float(self.camera.ExposureTimeRaw.GetValue()) != self.para.exp_time:
@@ -360,6 +326,7 @@ class Blueberry(QThread):
                     if len(image.shape) == 3:
                         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                     result.Release()
+                self.camera.StopGrabbing()
 
         if image is None:
             self.thread_logger_signal.emit('ERROR', 'Image is None. Taking a picture is failed.')
@@ -372,26 +339,5 @@ class Blueberry(QThread):
         self.para.set_parameter(idx, value)
 
     @Slot(str)
-    def redraw_signal(self, name):
-        mutex.acquire()
-        while not self.return_queue.empty():
-            self.return_queue.get()
-        while not self.analysis_queue.empty():
-            self.analysis_queue.get()
-        while not self.stream_queue.empty():
-            self.stream_queue.get()
-        try:
-            image = cv2.imread(name)
-        except:
-            self.thread_logger_signal("ERROR", "Wrong image")
-            return
-        if image is None: 
-            self.thread_logger_signal("ERROR", "Wrong image")
-            return
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        self.save_signal.emit(name)
-
-        self.analysis_queue.put([image, self.para])
-        mutex.release()
+    def set_current(self, current):
+        self.current = current

@@ -25,39 +25,23 @@ from logger import LogStringHandler
 from variables import *
 
 class Strawberry(QThread):
-    stream_signal = Signal(list)
-    analysis_signal = Signal(list)
-
+    signal = Signal(list)
     graph_signal = Signal(int, list, list)
-    def __init__(self, para, main, return_queue):
+    def __init__(self, para, slot, return_queue):
         super().__init__()
         self.para = para
-        self.main = main
         self.return_queue = return_queue
         self.working = True
 
-        self.cam_request = self.para.cam_request
-        self.fps = self.para.fps
-
-        self.stream_signal.connect(self.main.image_stream)
-        self.analysis_signal.connect(self.main.image_analysis)
+        self.signal.connect(slot)
 
     def run(self):
         while self.working:
-            if self.cam_request != self.para.cam_request:
-                while not self.return_queue.empty():
-                    self.return_queue.get()
-                self.cam_request = self.para.cam_request
-            
             if not self.return_queue.empty():
                 element = self.return_queue.get()
-                target = element.pop(0)
-                if target  == STREAM:
-                    self.stream_signal.emit(element)
-                elif target == ANALYSIS:
-                    self.analysis_signal.emit(element)
-        
+                self.signal.emit(element)
+
     def stop(self):
         self.working = False
-        self.sleep(1)
         self.quit()
+        self.wait(1000)
