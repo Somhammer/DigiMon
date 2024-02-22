@@ -6,7 +6,7 @@ Digital Camera Monitoring System(DigiMon) is a program that measures the transve
 Korean manual: [Korean](https://github.com/Somhammer/DigiMon/blob/master/README_KR.md)
 
 English manual: [English](https://github.com/Somhammer/DigiMon/blob/master/README.md)
-
+(English Manual is expired.)
 ### Authors
 - Seohyeon An(san@ncc.re.kr)
 - Garam Hahn(garam@postech.ac.kr)

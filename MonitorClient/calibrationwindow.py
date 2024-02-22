@@ -218,8 +218,6 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
         self.linePixel4x.setText("")
         self.linePixel4y.setText("")
 
-
-
     def return_para(self):
         sender = self.sender()
         if sender == self.buttonBox:
@@ -398,30 +396,22 @@ class CalibrationWindow(QDialog, Ui_CalibrationWindow):
         ]
 
         try:
-            tmp = np.array([0.0, 0.0])
-            tmp2 = 0
-            for i in range(len(self.cal_target_points)):
-                if i == 4: continue
-                for j in range(i+1, len(self.cal_target_points)):
-                    pixel1 = np.array(self.cal_target_points[i])
-                    pixel2 = np.array(self.cal_target_points[j])
-                    real1 = np.array(self.cal_real_target[i])
-                    real2 = np.array(self.cal_real_target[j])
-                    if real1[0] == real2[0] or real1[1] == real2[1]: continue
-                    tmp += abs(pixel1 - pixel2) / abs(real1 - real2)
-                    tmp2 += 1
-
-            avg_pixel_per_mm = (tmp / tmp2).tolist()
-            coordinate_center = np.array([self.cal_target_points[0][0] - self.cal_real_target[0][0]*avg_pixel_per_mm[0], 
-                                        self.cal_target_points[0][1] - self.cal_real_target[0][1]*avg_pixel_per_mm[1]])
+            pixel1 = np.array(self.cal_target_points[0])
+            pixel2 = np.array(self.cal_target_points[2])
+            real1 = np.array(self.cal_real_target[0])
+            real2 = np.array(self.cal_real_target[2])
+            pixel_per_mm = (abs(pixel1 - pixel2) / abs(real1 - real2)).tolist()
+            pixel_length = [self.cal_real_target[0][0] * pixel_per_mm[0], self.cal_real_target[0][1] * pixel_per_mm[1]]
+            coordinate_center = np.array([self.cal_target_points[0][0] - pixel_length[0], 
+                                        self.cal_target_points[0][1] + pixel_length[1]])
 
             self.cal_dest_points = []
             for i in range(len(self.cal_real_target)):
                 point = self.cal_real_target[i]
-                self.cal_dest_points.append([round(coordinate_center[0] + point[0]*avg_pixel_per_mm[0]), 
-                                            round(coordinate_center[1] + point[1]*avg_pixel_per_mm[1])])
-                #([round(half_width + point[0] * avg_pixel_per_mm[0]), round(half_height - point[1] * avg_pixel_per_mm[1])])
-
+                self.cal_dest_points.append([round(coordinate_center[0] - point[0]*pixel_per_mm[0]), 
+                                            round(coordinate_center[1] + point[1]*pixel_per_mm[1])])
+                #([round(half_width + point[0] * pixel_per_mm[0]), round(half_height - point[1] * pixel_per_mm[1])])
+            print(coordinate_center, self.cal_dest_points)
             tmp = np.array([0.0, 0.0])
             tmp2 = 0
             for i in range(len(self.cal_dest_points)):

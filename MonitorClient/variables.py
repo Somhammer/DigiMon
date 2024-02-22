@@ -143,6 +143,9 @@ class Parameters:
         self.filter_para = {}
         self.coordinate_center = [0,0]
 
+        self.cal_target_points = {'Point1':[0,0], 'Point2':[0,0], 'Point3':[0,0], 'Point4':[0,0]}
+        self.cal_dest_points = {'Point1':[0,0], 'Point2':[0,0], 'Point3':[0,0], 'Point4':[0,0]}
+
     def set_parameter(self, idx, value=None):
         if idx == CAMERA_GAIN:
             self.gain = float(value)
