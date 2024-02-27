@@ -9,9 +9,9 @@ DigiMon은 OpenCV와 Basler SDK를 지원합니다.
 영어 설명서: [English](https://github.com/Somhammer/DigiMon/blob/master/README.md)
 
 ## 다운로드와 설치
-최신 버전의 프로그램은 저장소의 [release](https://github.com/Somhammer/DigiMon/releases) 란에서 받을 수 있습니다.
+~~최신 버전의 프로그램은 저장소의 [release](https://github.com/Somhammer/DigiMon/releases) 란에서 받을 수 있습니다.~~
 
-운영체제에 맞게 다운로드한 다음 이용할 카메라 회사(Basler)의 소프트웨어(Pylon)를 설치하면 프로그램을 바로 이용할 수 있습니다.
+~~운영체제에 맞게 다운로드한 다음~~ 이용할 카메라 회사(Basler)의 소프트웨어(Pylon)를 설치하면 프로그램을 바로 이용할 수 있습니다.
 
 또한 GPU 연산을 사용하고 싶은 경우 [CUDA](https://developer.nvidia.com/cuda-downloads)를 추가로 설치해야 합니다.
 
