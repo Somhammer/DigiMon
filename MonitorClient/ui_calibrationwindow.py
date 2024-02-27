@@ -12,12 +12,17 @@ from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
 
+import os
+from variables import BASE_PATH
 
 class Ui_CalibrationWindow(object):
     def setupUi(self, CalibrationWindow):
         if not CalibrationWindow.objectName():
             CalibrationWindow.setObjectName(u"CalibrationWindow")
         CalibrationWindow.resize(832, 690)
+        icon = QIcon()
+        icon.addFile(os.path.join(BASE_PATH, "icons/ncc.png"), QSize(), QIcon.Normal, QIcon.Off)
+        CalibrationWindow.setWindowIcon(icon)
         self.gridLayout_2 = QGridLayout(CalibrationWindow)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
         self.frameOrigin = QFrame(CalibrationWindow)

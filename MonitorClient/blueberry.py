@@ -9,13 +9,7 @@
 #   2. It captures images and send them to stream_input_queue or analyze_queue.
 # -------------------------------------------------------
 
-import os, sys
 import time
-import datetime
-import logging
-import numpy as np
-from scipy.optimize import curve_fit
-import copy
 import cv2
 
 import_pylon = False
@@ -29,11 +23,7 @@ from PySide6.QtCore import *
 from PySide6.QtGui import *
 from PySide6.QtCharts import *
 
-import pyqtgraph as pg
-
-from logger import LogStringHandler
 from variables import *
-import utilities as util
 from DigiMon import mutex
 
 class Blueberry(QThread):

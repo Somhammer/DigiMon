@@ -12,12 +12,18 @@ from PySide6.QtCore import *  # type: ignore
 from PySide6.QtGui import *  # type: ignore
 from PySide6.QtWidgets import *  # type: ignore
 
+import os
+from variables import BASE_PATH
 
 class Ui_ImageWindow(object):
     def setupUi(self, Dialog):
         if not Dialog.objectName():
             Dialog.setObjectName(u"Dialog")
         Dialog.resize(400, 300)
+        icon = QIcon()
+        icon.addFile(os.path.join(BASE_PATH, "icons/ncc.png"), QSize(), QIcon.Normal, QIcon.Off)
+        Dialog.setWindowIcon(icon)
+
         self.gridLayout = QGridLayout(Dialog)
         self.gridLayout.setObjectName(u"gridLayout")
         self.buttonBox = QDialogButtonBox(Dialog)

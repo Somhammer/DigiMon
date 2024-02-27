@@ -6,11 +6,9 @@
 # -------------------------------------------------------
 
 import platform
-import os, sys
+import os
 import logging
 import datetime
-import yaml
-import asyncio
 
 import numpy as np
 import cv2

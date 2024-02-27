@@ -9,7 +9,7 @@
 #   2. It captures images and sends them to stream_queue or analyze_queue.
 # -------------------------------------------------------
 
-import os, sys
+import os
 import time
 import asyncio
 

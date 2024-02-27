@@ -8,7 +8,6 @@
 
 # coding: UTF-8
 from queue import Queue
-from threading import Thread
 import multiprocessing
 import os, sys
 from multiprocessing import Process, Queue, Lock

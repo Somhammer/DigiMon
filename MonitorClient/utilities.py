@@ -1,7 +1,4 @@
-import numpy as np
-from scipy.optimize import curve_fit
 import cv2
-import copy
 
 from variables import *
 

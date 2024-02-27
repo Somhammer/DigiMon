@@ -1,24 +1,11 @@
-import os, sys
-import time
-import datetime
-import logging
 import copy
-import yaml
-import math
-import textwrap
 import cv2
-import numpy as np
 
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from PySide6.QtGui import *
 
-import pyqtgraph as pg
-
-from logger import LogStringHandler
 from variables import *
-import utilities as ut
-from digilabel import DigiLabel
 from ui_roiwindow import Ui_ROIWindow
 
 class ROIWindow(QDialog, Ui_ROIWindow):
